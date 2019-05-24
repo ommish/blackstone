@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="3.1.0">
+  <bpmn:dataStore id="PROCESS_INSTANCE" name="Process Instance">
+    <bpmn:extensionElements>
+      <camunda:properties>
+        <camunda:property name="agreement" value="7" />
+        <camunda:property name="SignBy" value="4" />
+        <camunda:property name="WaitFor" value="4" />
+      </camunda:properties>
+    </bpmn:extensionElements>
+  </bpmn:dataStore>
+  <bpmn:dataStore id="agreement" name="Agreement">
+    <bpmn:extensionElements>
+      <camunda:properties>
+        <camunda:property name="Assignee" value="8" />
+      </camunda:properties>
+    </bpmn:extensionElements>
+  </bpmn:dataStore>
+  <bpmn:collaboration id="Collaboration_1bqszqk">
+    <bpmn:extensionElements>
+      <camunda:properties>
+        <camunda:property name="id" value="timer-model" />
+        <camunda:property name="version" value="1.0.0" />
+        <camunda:property name="private" value="true" />
+      </camunda:properties>
+    </bpmn:extensionElements>
+    <bpmn:participant id="Participant_0afvvg1" name="Process Name" processRef="Process_104nkeu" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_104nkeu" name="Process Name" isExecutable="false">
+    <bpmn:extensionElements>
+      <camunda:properties>
+        <camunda:property name="processInterface" value="Agreement Formation" />
+      </camunda:properties>
+    </bpmn:extensionElements>
+    <bpmn:laneSet id="LaneSet_08x4qvj">
+      <bpmn:lane id="Lane_1qvrgtf" name="Assignee">
+        <bpmn:extensionElements>
+          <camunda:properties>
+            <camunda:property name="conditionalPerformer" value="true" />
+            <camunda:property name="dataStorageId" value="agreement" />
+            <camunda:property name="dataPath" value="Assignee" />
+          </camunda:properties>
+        </bpmn:extensionElements>
+        <bpmn:flowNodeRef>Task_1jrtitw</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_18i4kvj" name="Agreement Parties (Signatories)">
+        <bpmn:extensionElements>
+          <camunda:properties>
+            <camunda:property name="conditionalPerformer" value="true" />
+            <camunda:property name="dataStorageId" value="agreement" />
+            <camunda:property name="dataPath" value="AGREEMENT_PARTIES" />
+          </camunda:properties>
+        </bpmn:extensionElements>
+        <bpmn:flowNodeRef>Task_0ky8n9d</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>BoundaryEvent_0ysx6f3</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>IntermediateThrowEvent_18c1gi7</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:userTask id="Task_1jrtitw" name="User Task">
+      <bpmn:extensionElements>
+        <camunda:properties>
+          <camunda:property name="INDATAID_0" value="Signby" />
+          <camunda:property name="INDATA_Signby_dataStorageId" value="PROCESS_INSTANCE" />
+          <camunda:property name="INDATA_Signby_dataPath" value="SignBy" />
+        </camunda:properties>
+      </bpmn:extensionElements>
+      <bpmn:incoming>SequenceFlow_0twrlls</bpmn:incoming>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="SequenceFlow_0twrlls" name="" sourceRef="IntermediateThrowEvent_18c1gi7" targetRef="Task_1jrtitw">
+      <bpmn:extensionElements>
+        <camunda:properties />
+      </bpmn:extensionElements>
+    </bpmn:sequenceFlow>
+    <bpmn:userTask id="Task_0ky8n9d" name="Signing Task">
+      <bpmn:extensionElements>
+        <camunda:properties>
+          <camunda:property name="application" value="AgreementSignatureCheck" />
+          <camunda:property name="INDATAID_0" value="agreement" />
+          <camunda:property name="INDATA_agreement_dataStorageId" value="PROCESS_INSTANCE" />
+          <camunda:property name="INDATA_agreement_dataPath" value="agreement" />
+        </camunda:properties>
+      </bpmn:extensionElements>
+      <bpmn:outgoing>SequenceFlow_0zwb2ij</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics />
+    </bpmn:userTask>
+    <bpmn:boundaryEvent id="BoundaryEvent_0ysx6f3" name="SignBy" attachedToRef="Task_0ky8n9d">
+      <bpmn:extensionElements>
+        <camunda:properties>
+          <camunda:property name="ESCALATION_ACTION" value="CANCEL_AGREEMENT" />
+          <camunda:property name="INDATAID_0" value="SignBy" />
+          <camunda:property name="INDATA_SignBy_dataStorageId" value="PROCESS_INSTANCE" />
+          <camunda:property name="INDATA_SignBy_dataPath" value="SignBy" />
+        </camunda:properties>
+      </bpmn:extensionElements>
+      <bpmn:timerEventDefinition>
+        <bpmn:timeDate xsi:type="bpmn:tFormalExpression" />
+      </bpmn:timerEventDefinition>
+    </bpmn:boundaryEvent>
+    <bpmn:sequenceFlow id="SequenceFlow_0zwb2ij" sourceRef="Task_0ky8n9d" targetRef="IntermediateThrowEvent_18c1gi7" />
+    <bpmn:intermediateCatchEvent id="IntermediateThrowEvent_18c1gi7" name="Wait For">
+      <bpmn:extensionElements>
+        <camunda:properties>
+          <camunda:property name="INDATAID_0" value="WaitFor" />
+          <camunda:property name="INDATA_WaitFor_dataStorageId" value="PROCESS_INSTANCE" />
+          <camunda:property name="INDATA_WaitFor_dataPath" value="WaitFor" />
+        </camunda:properties>
+      </bpmn:extensionElements>
+      <bpmn:incoming>SequenceFlow_0zwb2ij</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_0twrlls</bpmn:outgoing>
+      <bpmn:timerEventDefinition>
+        <bpmn:timeDate xsi:type="bpmn:tFormalExpression" />
+      </bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_1bqszqk">
+      <bpmndi:BPMNShape id="Participant_0afvvg1_di" bpmnElement="Participant_0afvvg1" isHorizontal="true">
+        <dc:Bounds x="156" y="81" width="600" height="250" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_18i4kvj_di" bpmnElement="Lane_18i4kvj" isHorizontal="true">
+        <dc:Bounds x="186" y="81" width="570" height="125" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_1qvrgtf_di" bpmnElement="Lane_1qvrgtf" isHorizontal="true">
+        <dc:Bounds x="186" y="206" width="570" height="125" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="UserTask_153pn9l_di" bpmnElement="Task_0ky8n9d">
+        <dc:Bounds x="265" y="103" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_0twrlls_di" bpmnElement="SequenceFlow_0twrlls">
+        <di:waypoint x="437" y="161" />
+        <di:waypoint x="437" y="226" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="UserTask_1er1bmq_di" bpmnElement="Task_1jrtitw">
+        <dc:Bounds x="387" y="226" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BoundaryEvent_1c1awmn_di" bpmnElement="BoundaryEvent_0ysx6f3">
+        <dc:Bounds x="347" y="85" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="390" y="96" width="35" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_0zwb2ij_di" bpmnElement="SequenceFlow_0zwb2ij">
+        <di:waypoint x="365" y="143" />
+        <di:waypoint x="419" y="143" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="IntermediateCatchEvent_11k3ddk_di" bpmnElement="IntermediateThrowEvent_18c1gi7">
+        <dc:Bounds x="419" y="125" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="459" y="136" width="42" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

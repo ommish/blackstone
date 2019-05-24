@@ -18,8 +18,13 @@ const BPMN_TYPE_SERVICE_TASK = 'bpmn:ServiceTask';
 const BPMN_TYPE_COLLABORATION = 'bpmn:Collaboration';
 const BPMN_TYPE_PARALLEL_GATEWAY = 'bpmn:ParallelGateway';
 const BPMN_TYPE_EXCLUSIVE_GATEWAY = 'bpmn:ExclusiveGateway';
+const BPMN_TYPE_BOUNDARY_EVENT = 'bpmn:BoundaryEvent';
+const BPMN_TYPE_INTERMEDIATE_CATCH_EVENT = 'bpmn:IntermediateCatchEvent';
 const BPMN_EXTENSION_PROPERTIES = 'camunda:properties';
 const BPMN_EXTENTION_ELEMENTS = 'extensionElements';
+const BPMN_EVENT_DEFINITIONS = 'eventDefinitions';
+const BPMN_EVENT_ATTACHED_TO = 'attachedToRef';
+const BPMN_TYPE_TIMER_EVENT_DEFINITION = 'bpmn:TimerEventDefinition';
 
 const BPMN_DATAMAPPINGS_IN = 'IN';
 const BPMN_DATAMAPPINGS_OUT = 'OUT';
@@ -59,6 +64,12 @@ const BPM_MODEL_GATEWAY_TYPE = {
 const BPM_MODEL_DATA_STORE_IDS = {
   processInstance: 'PROCESS_INSTANCE',
   agreement: 'agreement',
+};
+
+const BPMN_TIMER_TYPES = {
+  DATE: 'timeDate',
+  DURATION: 'timeDuration',
+  CYCLE: 'timeCycle',
 };
 
 const getBooleanFromString = (val) => {
@@ -361,6 +372,50 @@ const getGatewayFromNode = (node, type) => {
   return response;
 };
 
+const getTimerType = (node) => {
+  let _type;
+  const eventDefnTypes = node[BPMN_EVENT_DEFINITIONS];
+  if (eventDefnTypes && eventDefnTypes[0] && eventDefnTypes[0]['$type'] === BPMN_TYPE_TIMER_EVENT_DEFINITION) {
+    const elem = eventDefnTypes[0];
+    _type = Object.prototype.hasOwnProperty.call(elem, BPMN_TIMER_TYPES.DATE) ? 'date' : null;
+    _type = _type || (Object.prototype.hasOwnProperty.call(elem, BPMN_TIMER_TYPES.DURATION) ? 'duration' : null);
+    _type = _type || (Object.prototype.hasOwnProperty.call(elem, BPMN_TIMER_TYPES.CYCLE) ? 'cycle' : null);
+  }
+  return _type;
+};
+
+const getTimerBoundaryEventFromNode = (node) => {
+  const _type = getTimerType(node);
+  if (!_type) return {};
+  const response = {
+    name: node.name,
+    id: node.id,
+    type: _type,
+    attachedTo: node[BPMN_EVENT_ATTACHED_TO].id,
+  };
+  if (Object.prototype.hasOwnProperty.call(node, BPMN_EXTENTION_ELEMENTS)) {
+    Object.assign(response, getExtensionElementsFromNode(node).properties);
+  }
+  return response;
+};
+
+const getIntermediateCatchEventFromNode = (node) => {
+  const _type = getTimerType(node);
+  if (!_type) return {};
+  const response = {
+    name: node.name,
+    id: node.id,
+    type: _type,
+    activityType: BPM_MODEL_ACTIVITY_TYPES.TASK, // under the hood an intermediate catch event is treated as a task
+    taskType: BPM_MODEL_TASK_TYPES.NONE, // a dummy task that can be completed by anyone
+    behavior: BPM_MODEL_TASK_BEHAVIORS.SENDRECEIVE, // it should wait to be completed
+  };
+  if (Object.prototype.hasOwnProperty.call(node, BPMN_EXTENTION_ELEMENTS)) {
+    Object.assign(response, getExtensionElementsFromNode(node).properties);
+  }
+  return response;
+};
+
 const getFlowElementDetails = (flowElements, participants) => {
   const response = {
     tasks: [],
@@ -373,6 +428,8 @@ const getFlowElementDetails = (flowElements, participants) => {
     andGateways: [],
     activityMap: {},
     defaultTransitions: [],
+    boundaryEvents: [],
+    intermediateCatchEvents: [],
   };
   let task;
   let userTask;
@@ -415,6 +472,12 @@ const getFlowElementDetails = (flowElements, participants) => {
         break;
       case BPMN_TYPE_PARALLEL_GATEWAY:
         response.andGateways.push(getGatewayFromNode(elem, BPM_MODEL_GATEWAY_TYPE.AND).gateway);
+        break;
+      case BPMN_TYPE_BOUNDARY_EVENT:
+        response.boundaryEvents.push(getTimerBoundaryEventFromNode(elem));
+        break;
+      case BPMN_TYPE_INTERMEDIATE_CATCH_EVENT:
+        response.intermediateCatchEvents.push(getIntermediateCatchEventFromNode(elem));
         break;
       default:
         break;

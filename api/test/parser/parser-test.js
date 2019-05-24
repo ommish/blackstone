@@ -13,6 +13,7 @@ const bpmnParser = require(path.resolve("lib", "bpmn-parser"));
 
 const xmlString = fs.readFileSync(path.resolve("data", "sample", "T2-example.bpmn"), "utf8");
 const gatewayXml = fs.readFileSync(path.resolve("test", "data", "Gateways-Parser-Test.bpmn"), "utf8");
+const timerXml = fs.readFileSync(path.resolve("test", "data", "timer-model.bpmn"), "utf8");
 
 describe("BPMN XML Parser", () => {
   let parser;
@@ -65,6 +66,22 @@ describe("BPMN XML Parser", () => {
       })[0];
       expect(model).to.deep.equal(gatewayModel1);
       expect(p1).to.deep.equal(gatewayProcess1);
+    } catch (err) {
+      throw err;
+    }
+  });
+
+  it('Should get boundary and intermediate timer details', async () => {
+    try {
+      parser = bpmnParser.getNewParser();
+      await parser.parse(timerXml);
+      let model = parser.getModel();
+      let processes = parser.getProcesses();
+      let p1 = processes.filter((p) => {
+        return p.id === timerProcess1.id;
+      })[0];
+      expect(model).to.deep.equal(timerModel1);
+      expect(p1).to.deep.equal(timerProcess1);
     } catch (err) {
       throw err;
     }
@@ -251,7 +268,9 @@ const expectedProcess1 = {
     "Task_0667wyu": "Validate Signature"
   },
   "andGateways": [],
-  "xorGateways": []
+  "xorGateways": [],
+  "boundaryEvents": [],
+  "intermediateCatchEvents": [],
 };
 
 const expectedProcess2 = {
@@ -305,7 +324,9 @@ const expectedProcess2 = {
     "reviewTask2": "Review Completion",
   },
   "andGateways": [],
-  "xorGateways": []
+  "xorGateways": [],
+  "boundaryEvents": [],
+  "intermediateCatchEvents": [],
 };
 
 const gatewayModel1 = {
@@ -531,5 +552,104 @@ const gatewayProcess1 = {
     "gateway": "ExclusiveGateway_0gx4teu",
     "transition": "SequenceFlow_1jj19x9",
     "activity": "Task_0676pdy"
-  }]
+  }],
+  "boundaryEvents": [],
+  "intermediateCatchEvents": [],
+};
+
+const timerModel1 = {
+  "dataStoreFields": [
+    { "dataStorageId": "PROCESS_INSTANCE", "dataPath": "agreement", "parameterType": 7 },
+    { "dataStorageId": "PROCESS_INSTANCE", "dataPath": "SignBy", "parameterType": 4 },
+    { "dataStorageId": "PROCESS_INSTANCE", "dataPath": "WaitFor", "parameterType": 4 },
+    { "dataStorageId": "agreement", "dataPath": "Assignee", "parameterType": 8 }
+  ],
+  "name": "Collaboration_1bqszqk",
+  "id": "timer-model",
+  "version": [1, 0, 0],
+  "private": true
+};
+
+const timerProcess1 = {
+  "id": "Process_104nkeu",
+  "name": "Process Name",
+  "interface": "Agreement Formation",
+  "participants": [
+    {
+      "id": "Lane_1qvrgtf",
+      "name": "Assignee",
+      "tasks": ["Task_1jrtitw"],
+      "conditionalPerformer": true,
+      "dataStorageId": "agreement",
+      "dataPath": "Assignee"
+    },
+    {
+      "id": "Lane_18i4kvj",
+      "name": "Agreement Parties (Signatories)",
+      "tasks": ["Task_0ky8n9d", "BoundaryEvent_0ysx6f3", "IntermediateThrowEvent_18c1gi7"],
+      "conditionalPerformer": true,
+      "dataStorageId": "agreement",
+      "dataPath": "AGREEMENT_PARTIES"
+    }
+  ],
+  "tasks": [],
+  "userTasks": [
+    {
+      "id": "Task_1jrtitw",
+      "name": "User Task",
+      "assignee": "Lane_1qvrgtf",
+      "activityType": 0,
+      "taskType": 1,
+      "behavior": 1,
+      "multiInstance": false,
+      "dataMappings": [{ "id": "Signby", "direction": 0, "dataPath": "SignBy", "dataStorageId": "" }],
+      "application": "",
+      "subProcessModelId": "",
+      "subProcessDefinitionId": ""
+    },
+    {
+      "id": "Task_0ky8n9d",
+      "name": "Signing Task",
+      "assignee": "Lane_18i4kvj",
+      "activityType": 0,
+      "taskType": 1,
+      "behavior": 1,
+      "multiInstance": true,
+      "dataMappings": [{ "id": "agreement", "direction": 0, "dataPath": "agreement", "dataStorageId": "" }],
+      "application": "AgreementSignatureCheck",
+      "subProcessModelId": "",
+      "subProcessDefinitionId": ""
+    }
+  ],
+  "sendTasks": [],
+  "transitions": [
+    { "id": "SequenceFlow_0twrlls", "source": "IntermediateThrowEvent_18c1gi7", "target": "Task_1jrtitw" },
+    { "id": "SequenceFlow_0zwb2ij", "source": "Task_0ky8n9d", "target": "IntermediateThrowEvent_18c1gi7" }
+  ],
+  "subProcesses": [],
+  "serviceTasks": [],
+  "xorGateways": [],
+  "andGateways": [],
+  "activityMap": { "Task_1jrtitw": "User Task", "Task_0ky8n9d": "Signing Task" },
+  "boundaryEvents": [
+    {
+      "name": "SignBy",
+      "id": "BoundaryEvent_0ysx6f3",
+      "type": "date",
+      "attachedTo": "Task_0ky8n9d",
+      "dataMappings": [{ "id": "SignBy", "direction": 0, "dataPath": "SignBy", "dataStorageId": "" }],
+      "ESCALATION_ACTION": "CANCEL_AGREEMENT"
+    }
+  ],
+  "intermediateCatchEvents": [
+    {
+      "name": "Wait For",
+      "id": "IntermediateThrowEvent_18c1gi7",
+      "type": "date",
+      "activityType": 0,
+      "taskType": 0,
+      "behavior": 1,
+      "dataMappings": [{ "id": "WaitFor", "direction": 0, "dataPath": "WaitFor", "dataStorageId": "" }]
+    }
+  ]
 };
