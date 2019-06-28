@@ -1,7 +1,7 @@
 const multer = require('multer');
 const upload = multer();
 const {
-  createAgreement,
+  createAgreementHandler,
   getAgreements,
   getAgreementHandler,
   updateAgreementAttachments,
@@ -79,7 +79,7 @@ module.exports = (app, customMiddleware) => {
    *                 type: string
    *               executionProcessInstance:
    *                 type: string
-   * 
+   *
    */
   app.get('/agreements', middleware, getAgreements, sendResponse);
 
@@ -92,7 +92,7 @@ module.exports = (app, customMiddleware) => {
    *       - "Agreements"
    *     description: >-
    *       Active Agreement information for a single Agreement.
-   * 
+   *
    *       Notes:
    *       - If the password provided is incorrect or a hoard reference which
    *       does not exist was passed to the posted Active Agreement this get will
@@ -216,7 +216,7 @@ module.exports = (app, customMiddleware) => {
    *               description: >-
    *                 An array of the governing agreements with the `address`, `name`,
    *                 and `isPrivate` value of each
-   * 
+   *
    */
   app.get('/agreements/:address', middleware, getAgreementHandler, sendResponse);
 
@@ -279,7 +279,7 @@ module.exports = (app, customMiddleware) => {
    *                     type: integer
    *               description: >-
    *                 The "custom-field-name" and values of the parameters.
-   * 
+   *
    *                 Note - If a parameter with type 8 (Signing Party) is given, the
    *                 corresponding value will be added to the agreement's parties.
    *             governingAgreements:
@@ -303,9 +303,9 @@ module.exports = (app, customMiddleware) => {
    *             address:
    *               type: string
    *               description: address of the created Agreement
-   * 
+   *
    */
-  app.post('/agreements', middleware, createAgreement, sendResponse);
+  app.post('/agreements', middleware, createAgreementHandler, sendResponse);
 
   /**
    * @swagger
@@ -316,13 +316,13 @@ module.exports = (app, customMiddleware) => {
    *       - "Agreements"
    *     description: >-
    *       an attachment to the specific agreement.
-   * 
+   *
    *       When requested with `Content-Type: multipart/form-data`, the attached file
    *       will be uploaded to hoard.
-   * 
+   *
    *       The attachment's content will be set to the hoard grant for the file, and
    *       the name will be set to the file's name.
-   * 
+   *
    *       When requested with  `Content-Type: application/json`, the name and
    *       content from the request will be used as the attachment.
    *     produces:
@@ -371,7 +371,7 @@ module.exports = (app, customMiddleware) => {
    *                   contentType:
    *                     type: string
    *               description: The updated array of attachments
-   * 
+   *
    */
   app.post('/agreements/:address/attachments', middleware, upload.any(), updateAgreementAttachments, sendResponse);
 
@@ -396,7 +396,7 @@ module.exports = (app, customMiddleware) => {
    *         description: Sign an Agreement
    *         schema:
    *           type: string
-   * 
+   *
    */
   app.put('/agreements/:address/sign', middleware, signAgreement, sendResponse);
 
@@ -423,7 +423,7 @@ module.exports = (app, customMiddleware) => {
    *         description: Cancel an Agreement
    *         schema:
    *           type: string
-   * 
+   *
    */
   app.put('/agreements/:address/cancel', middleware, cancelAgreement, sendResponse);
 };

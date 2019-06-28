@@ -22,7 +22,8 @@ note- parameters are handled separately
 
 const agreementSchema = Joi.object().keys({
   name: Joi.string()
-    .required().max(255, 'utf8'),
+    .required()
+    .max(255, 'utf8'),
   archetype: Joi.string()
     .hex()
     .required(),
@@ -32,13 +33,7 @@ const agreementSchema = Joi.object().keys({
   owner: Joi.string()
     .hex()
     .required(),
-  isPrivate: [
-    Joi.boolean(),
-    Joi.number()
-      .integer()
-      .min(0)
-      .max(1),
-  ],
+  isPrivate: Joi.boolean().default(true),
   privateParametersFileReference: Joi.string(),
   maxNumberOfAttachments: Joi.number()
     .min(0)
@@ -47,8 +42,11 @@ const agreementSchema = Joi.object().keys({
     .items(Joi.string().hex())
     .required(),
   collectionId: Joi.string()
-    .allow('').default(''),
-  governingAgreements: Joi.array().items(Joi.string().hex()).optional(),
+    .allow('')
+    .default(''),
+  governingAgreements: Joi.array()
+    .items(Joi.string().hex())
+    .optional(),
 });
 
 module.exports = agreementSchema;

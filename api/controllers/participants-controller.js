@@ -22,6 +22,55 @@ const userSchema = require(`${global.__schemas}/user`);
 const userProfileSchema = require(`${global.__schemas}/userProfile`);
 const { PARAMETER_TYPES: PARAM_TYPE } = global.__constants;
 
+const participantHelpers = {};
+
+participantHelpers.createOrganization = async (organization, userAddress) => {
+  const org = Object.assign({}, organization);
+  log.info(`Request to create new organization: ${org.name}`);
+  if (!org.name) throw boom.badRequest('Organization name is required');
+  if (org.name > 255) throw boom.badRequest('Organization name length cannot exceed 255 characters');
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { id } = await db.insertOrganization(null, org.name, client);
+    if (!org.approvers || org.approvers.length === 0) {
+      log.debug(`No approvers provided for new organization. Setting current user ${userAddress} as approver.`);
+      org.approvers = [userAddress];
+    }
+    const defDepId = getSHA256Hash(DEFAULT_DEPARTMENT_ID);
+    org.defaultDepartmentId = defDepId;
+    const address = await contracts.createOrganization(org);
+    await db.updateOrganization(id, address, org.name, client);
+    await db.insertDepartmentDetails({
+      organizationAddress: address,
+      id: defDepId,
+      name: org.defaultDepartmentName || DEFAULT_DEPARTMENT_ID,
+    }, client);
+    await client.query('COMMIT');
+    log.info('Added organization name and address to postgres');
+    return { address, name: org.name };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    if (boom.isBoom(err)) throw err;
+    throw boom.badImplementation(err);
+  } finally {
+    client.release();
+  }
+};
+
+participantHelpers.addDepartmentUsers = async (orgAddress, depId, users, userAddress) => {
+  const authorized = await db.userIsOrganizationApprover(orgAddress, userAddress);
+  if (!authorized) {
+    throw boom.forbidden('User is not an approver of the organization and not authorized to remove users');
+  }
+  const addUserPromises = users.map(user => contracts.addDepartmentUser(orgAddress, depId, user, userAddress));
+  await Promise.all(addUserPromises)
+    .catch((err) => {
+      if (boom.isBoom(err)) throw err;
+      throw boom.badImplementation(err);
+    });
+};
+
 const getParticipantNames = async (participants, addressKey = 'address') => {
   try {
     const withNames = await db.getParticipantNames(participants.map(({ [addressKey]: address }) => address));
@@ -112,39 +161,9 @@ const getOrganization = asyncMiddleware(async (req, res, next) => {
 });
 
 const createOrganization = asyncMiddleware(async (req, res, next) => {
-  const org = req.body;
-  log.info(`Request to create new organization: ${org.name}`);
-  if (!org.name) throw boom.badRequest('Organization name is required');
-  if (org.name > 255) throw boom.badRequest('Organization name length cannot exceed 255 characters');
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const { id } = await db.insertOrganization(null, org.name, client);
-    if (!org.approvers || org.approvers.length === 0) {
-      log.debug(`No approvers provided for new organization. Setting current user ${req.user.address} as approver.`);
-      org.approvers = [req.user.address];
-    }
-    const defDepId = getSHA256Hash(DEFAULT_DEPARTMENT_ID);
-    org.defaultDepartmentId = defDepId;
-    const address = await contracts.createOrganization(org);
-    await db.updateOrganization(id, address, org.name, client);
-    await db.insertDepartmentDetails({
-      organizationAddress: address,
-      id: defDepId,
-      name: org.defaultDepartmentName || DEFAULT_DEPARTMENT_ID,
-    }, client);
-    await client.query('COMMIT');
-    log.info('Added organization name and address to postgres');
-    res.locals.data = { address, name: org.name };
-    res.status(200);
-    return next();
-  } catch (err) {
-    await client.query('ROLLBACK');
-    if (boom.isBoom(err)) throw err;
-    throw boom.badImplementation(err);
-  } finally {
-    client.release();
-  }
+  res.locals.data = await participantHelpers.createOrganization(req.body, req.user.address);
+  res.status(200);
+  next();
 });
 
 const updateOrganization = asyncMiddleware(async (req, res, next) => {
@@ -239,21 +258,9 @@ const removeDepartment = asyncMiddleware(async (req, res, next) => {
 });
 
 const addDepartmentUsers = asyncMiddleware(async (req, res, next) => {
-  const { address, id } = req.params;
-  const authorized = await db.userIsOrganizationApprover(address, req.user.address);
-  if (!authorized) {
-    throw boom.forbidden('User is not an approver of the organization and not authorized to remove users');
-  }
-  const { users } = req.body;
-  const addUserPromises = users.map(user => contracts.addDepartmentUser(address, id, user, req.user.address));
-  await Promise.all(addUserPromises)
-    .then(() => {
-      res.status(200);
-      return next();
-    }).catch((err) => {
-      if (boom.isBoom(err)) throw err;
-      throw boom.badImplementation(err);
-    });
+  await participantHelpers.addDepartmentUsers(req.params.address, req.params.id, req.body.users, req.user.address);
+  res.status(200);
+  next();
 });
 
 const removeDepartmentUser = asyncMiddleware(async (req, res, next) => {
@@ -600,6 +607,7 @@ const createOrFindAccountsWithEmails = async (params, typeKey) => {
 };
 
 module.exports = {
+  participantHelpers,
   getParticipantNames,
   getOrganizations,
   getOrganization,

@@ -415,28 +415,28 @@ const setAgreementParameters = async (agreeAddr, archAddr, parameters) => {
   });
 };
 
-const createAgreement = asyncMiddleware(async (req, res, next) => {
-  const _parameters = req.body.parameters || [];
+const createAgreement = async (agr, userAddr) => {
+  const _parameters = agr.parameters || [];
   const { parameters, newUsers } = await createOrFindAccountsWithEmails(_parameters, 'type');
-  const parties = req.body.parties || [];
+  const parties = agr.parties || [];
   parameters.forEach((param) => {
     validateAgreementParameterValue(param);
     if (parseInt(param.type, 10) === PARAM_TYPE.SIGNING_PARTY) parties.push(param.value);
   });
   let agreement = {
-    name: req.body.name,
-    archetype: req.body.archetype,
-    creator: req.user.address,
-    owner: req.body.owner || req.user.address,
-    isPrivate: req.body.isPrivate,
+    name: agr.name,
+    archetype: agr.archetype,
+    creator: userAddr,
+    owner: agr.owner || userAddr,
+    isPrivate: agr.isPrivate,
     parties,
-    collectionId: req.body.collectionId,
-    governingAgreements: req.body.governingAgreements || [],
+    collectionId: agr.collectionId,
+    governingAgreements: agr.governingAgreements || [],
   };
   const { value, error } = Joi.validate(agreement, agreementSchema, { abortEarly: false });
   if (error) { throw boom.badRequest(error); }
   agreement = value;
-
+  console.log('CREATING AGR: ', JSON.stringify(agreement));
   // validate if archetype is active - only active archetypes can be instantiated into an agreement
   if (!contracts.isActiveArchetype(agreement.archetype)) {
     throw boom.badRequest(`Cannot instantiate inactive archetype at ${agreement.archetype} for agreement ${agreement.name}`);
@@ -444,23 +444,26 @@ const createAgreement = asyncMiddleware(async (req, res, next) => {
   const paramsRequired = await _checkModelsForRequiredParameters(agreement.archetype);
   const { privateParams, publicParams } = _createPrivatePublicArrays(parameters, paramsRequired);
   agreement.privateParametersFileReference = await hoardPut({ name: 'privateParameters.json' }, JSON.stringify(privateParams));
-  delete agreement.name; // Don't store name on chain
   const agreementAddress = await contracts.createAgreement(agreement);
   await contracts.initializeObjectAdministrator(agreementAddress);
-  await contracts.setMaxNumberOfAttachments(agreementAddress, parseInt(req.body.maxNumberOfAttachments, 10));
-  await setAgreementParameters(agreementAddress, req.body.archetype, publicParams);
+  await contracts.setMaxNumberOfAttachments(agreementAddress, parseInt(agreement.maxNumberOfAttachments, 10));
+  await setAgreementParameters(agreementAddress, agreement.archetype, publicParams);
   await contracts.setAddressScopeForAgreementParameters(agreementAddress, parameters.filter(({ scope }) => scope));
   await contracts.setAddressScopeForAgreementParameters(agreementAddress, parameters
     .filter(({ scope, value: paramVal }) => scope && parties.includes(paramVal))
     .map(param => ({ ...param, name: AGREEMENT_PARTIES })));
-  const { formation } = await contracts.getArchetypeProcesses(req.body.archetype);
+  const { formation } = await contracts.getArchetypeProcesses(agreement.archetype);
   if (!formation) {
-    throw boom.badImplementation(`No formation process found for archetype ${req.body.archetype}`);
+    throw boom.badImplementation(`No formation process found for archetype ${agreement.archetype}`);
   }
-  await sqlCache.insertAgreementDetails({ address: agreementAddress, name: req.body.name });
+  await sqlCache.insertAgreementDetails({ address: agreementAddress, name: agreement.name });
   const piAddress = await contracts.startProcessFromAgreement(agreementAddress);
   log.debug(`Process Instance Address: ${piAddress}`);
-  res.locals.data = { address: agreementAddress, newUsers, parameters };
+  return { address: agreementAddress, newUsers, parameters };
+};
+
+const createAgreementHandler = asyncMiddleware(async (req, res, next) => {
+  res.locals.data = await createAgreement(req.body, req.user.address);
   res.status(200);
   return next();
 });
@@ -694,7 +697,9 @@ module.exports = {
   getAgreementCollections,
   getAgreementCollection,
   addAgreementToCollection,
+  validateAgreementParameterValue,
   createAgreement,
+  createAgreementHandler,
   setAgreementParameters,
   getAgreementParameters,
   getAgreements,
