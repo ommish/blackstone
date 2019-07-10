@@ -436,7 +436,6 @@ const createAgreement = async (agr, userAddr) => {
   const { value, error } = Joi.validate(agreement, agreementSchema, { abortEarly: false });
   if (error) { throw boom.badRequest(error); }
   agreement = value;
-  console.log('CREATING AGR: ', JSON.stringify(agreement));
   // validate if archetype is active - only active archetypes can be instantiated into an agreement
   if (!contracts.isActiveArchetype(agreement.archetype)) {
     throw boom.badRequest(`Cannot instantiate inactive archetype at ${agreement.archetype} for agreement ${agreement.name}`);
