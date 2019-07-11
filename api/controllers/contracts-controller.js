@@ -558,6 +558,31 @@ const createAgreement = agreement => new Promise((resolve, reject) => {
       });
 });
 
+const setLegalState = (agreementAddress, legalState) => new Promise((resolve, reject) => {
+  log.debug(`REQUEST: Set legal state of agreement ${agreementAddress} to ${legalState}`);
+  const agreement = getContract(global.__abi, global.__bundles.AGREEMENTS.contracts.ACTIVE_AGREEMENT, agreementAddress);
+  agreement.setLegalState(legalState, (error) => {
+    if (error) {
+      return reject(boomify(error, `Failed to set legal state of agreement ${agreementAddress} to ${legalState}`));
+    }
+    log.info(`SUCCESS: Set legal state of agreement ${agreementAddress} to ${legalState}`);
+    return resolve();
+  });
+});
+
+const processStateChanged = piAddress => new Promise((resolve, reject) => {
+  log.debug(`REQUEST: Handle state change for process instance ${piAddress}`);
+  appManager
+    .contracts['ActiveAgreementRegistry']
+    .factory.processStateChanged(piAddress, (error) => {
+      if (error) {
+        return reject(boomify(error, `Failed to handle state change for process instance ${piAddress}`));
+      }
+      log.info(`SUCCESS: Handled state change for process instance ${piAddress}`);
+      return resolve();
+    });
+});
+
 const initializeObjectAdministrator = agreementAddress => new Promise((resolve, reject) => {
   log.debug(`REQUEST: Initializing agreement admin role for agreement: ${agreementAddress}`);
   const agreement = getContract(global.__abi, global.__bundles.AGREEMENTS.contracts.ACTIVE_AGREEMENT, agreementAddress);
@@ -1424,6 +1449,8 @@ module.exports = {
   deactivateArchetypePackage,
   addArchetypeToPackage,
   createAgreement,
+  setLegalState,
+  processStateChanged,
   initializeObjectAdministrator,
   setMaxNumberOfAttachments,
   setAddressScopeForAgreementParameters,
