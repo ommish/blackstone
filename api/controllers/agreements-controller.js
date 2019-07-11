@@ -458,7 +458,9 @@ const createAgreement = async (agr, userAddr) => {
   await sqlCache.insertAgreementDetails({ address: agreementAddress, name: agreement.name });
   const piAddress = await contracts.startProcessFromAgreement(agreementAddress);
   log.debug(`Process Instance Address: ${piAddress}`);
-  return { address: agreementAddress, newUsers, parameters };
+  return {
+    address: agreementAddress, newUsers, parameters, processInstance: piAddress,
+  };
 };
 
 const createAgreementHandler = asyncMiddleware(async (req, res, next) => {
