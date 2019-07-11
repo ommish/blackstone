@@ -344,6 +344,16 @@ contract AbstractActiveAgreement_v1_0_1 is AbstractDelegateTarget, AbstractDataS
 	}
 
 	/**
+	 * @dev Sets the legal state of this agreement
+	 * @param _legalState the Agreements.LegalState
+	 */
+	function setLegalState(Agreements.LegalState _legalState) external {
+		legalState = _legalState;
+		emit LogAgreementLegalStateUpdate(EVENT_ID_AGREEMENTS, address(this), uint8(legalState));
+	}
+
+
+	/**
 	 * @dev Returns the legal state of this agreement
 	 * @return the Agreements.LegalState as a uint
 	 */
@@ -352,13 +362,12 @@ contract AbstractActiveAgreement_v1_0_1 is AbstractDelegateTarget, AbstractDataS
 	}
 
 	/**
-	 * @dev Sets the legal state of this agreement to Agreements.LegalState.FULFILLED.
-	 * Note: All other legal states are set by internal logic.
+     * @dev Sets the legal state of this agreement to Agreements.LegalState.FULFILLED.
+	 * !deprecated! use #setLegalState(Agreements.LegalState) instead 
 	 */
 	function setFulfilled() external {
-		// TODO this must only be allowed by an authorized account, e.g. SystemOwner which could be the registry
-		legalState = Agreements.LegalState.FULFILLED;
-		emit LogAgreementLegalStateUpdate(EVENT_ID_AGREEMENTS, address(this), uint8(legalState));
+        legalState = Agreements.LegalState.FULFILLED;
+        emit LogAgreementLegalStateUpdate(EVENT_ID_AGREEMENTS, address(this), uint8(legalState));
 	}
 
 	/**

@@ -131,6 +131,8 @@ contract ActiveAgreementRegistryTest {
 		(addr, timestamp) = agreementRegistry.getPartyByActiveAgreementData(activeAgreement, falseAddress);
 		if (timestamp != 0) return "Party data signature timestamp for false address expected to be 0";
 
+		// test legacy contr
+
 		return SUCCESS;
 	}
 
@@ -237,4 +239,9 @@ contract ActiveAgreementRegistryTest {
 		
 		return SUCCESS;
 	}
+}
+
+// Simulates the legacy form of the DefaultActiveAgreement which did not have the LEGAL_STATE_CONTROLLER permission
+contract ActiveAgreement_pre_1_3_0 is DefaultActiveAgreement {
+
 }

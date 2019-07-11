@@ -96,33 +96,6 @@ contract ActiveAgreementTest {
 		if (bogusArr[0] != address(0xCcD5bA65282C3dafB69b19351C7D5B77b9fDDCA6)) return "address[] retrieval via regular ID did not yield first element as expected";
 		if (agreement.getArrayLength(DATA_FIELD_AGREEMENT_PARTIES) != agreement.getNumberOfParties()) return "Array size count via DATA_FIELD_AGREEMENT_PARTIES did not match the number of parties";
 
-		// test agreement upgrade scenarios < 1.1.0 to retrofit the owner permission
-		DefaultActiveAgreement_pre_v1_1_0 upgradeTestAgreement = new DefaultActiveAgreement_pre_v1_1_0();
-		upgradeTestAgreement.initialize(archetype, address(this), address(this), dummyPrivateParametersFileRef, false, parties, emptyArray);
-		upgradeTestAgreement.downgrade();
-		bool permExists;
-		(permExists, , , , ) = upgradeTestAgreement.getPermissionDetails(upgradeTestAgreement.ROLE_ID_OWNER());
-		if (permExists) return "The upgrade test agreement should not have the owner permission";
-		// test positive permssission setting first to confirm a working function signature
-		if (!address(upgradeTestAgreement).call(abi.encodeWithSignature(functionSigUpgradeOwnerPermission, address(this)))) {
-			return "Upgrading the owner permission and setting it to the test contract should be successful";
-		}
-		(permExists, , , , ) = upgradeTestAgreement.getPermissionDetails(upgradeTestAgreement.ROLE_ID_OWNER());
-		if (!permExists) return "The owner permission should have been created in the upgrade";
-		if (upgradeTestAgreement.getHolder(upgradeTestAgreement.ROLE_ID_OWNER(), 0) != address(this)) return "The upgrade test agreement should show the test contract as the owner after the upgrade";
-
-		// test upgrade failures
-		if (address(upgradeTestAgreement).call(abi.encodeWithSignature(functionSigUpgradeOwnerPermission, address(this)))) {
-			return "Upgrading an already upgraded archetype should revert";
-		}
-		// create a fresh agreement to test failures
-		upgradeTestAgreement = new DefaultActiveAgreement_pre_v1_1_0();
-		upgradeTestAgreement.initialize(archetype, address(this), address(this), dummyPrivateParametersFileRef, false, parties, emptyArray);
-		upgradeTestAgreement.downgrade();
-		if (address(archetype).call(abi.encodeWithSignature(functionSigUpgradeOwnerPermission, address(0)))) {
-			return "Upgrading the owner permission and setting it to 0x0 should revert";
-		}
-
 		return SUCCESS;
 	}
 
@@ -183,6 +156,8 @@ contract ActiveAgreementTest {
 		if (!AgreementsAPI.isFullyExecuted(agreement)) return "AgreementsAPI.isFullyExecuted should be true after signer2";
 		if (agreement.getLegalState() != uint8(Agreements.LegalState.EXECUTED)) return "Agreement legal state should be EXECUTED after signer2";
 
+		// test legal state control for legacy contracts
+
 		return SUCCESS;
 	}
 
@@ -231,17 +206,6 @@ contract ActiveAgreementTest {
 		if (agreement2.getLegalState() != uint8(Agreements.LegalState.CANCELED)) return "Agreement2 legal state should be CANCELED after bilateral cancellation";
 
 		return SUCCESS;
-	}
-
-}
-
-/**
- * @dev This contract simulates the < v1.1.0 version of the contract which did not have the owner permission
- */
-contract DefaultActiveAgreement_pre_v1_1_0 is DefaultActiveAgreement {
-
-	function downgrade() external {
-		delete permissions[ROLE_ID_OWNER];
 	}
 
 }

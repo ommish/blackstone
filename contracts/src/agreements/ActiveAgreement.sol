@@ -34,6 +34,7 @@ contract ActiveAgreement is ActiveAgreement_v1_0_1, Permissioned {
 	);
 
  	bytes32 public constant ROLE_ID_OWNER = keccak256(abi.encodePacked("agreement.owner"));
+ 	bytes32 public constant ROLE_ID_LEGAL_STATE_CONTROLLER = keccak256(abi.encodePacked("agreement.legalStateController"));
 
 	/**
 	 * @dev Initializes this ActiveAgreement with the provided parameters. This function replaces the
@@ -61,13 +62,5 @@ contract ActiveAgreement is ActiveAgreement_v1_0_1, Permissioned {
 	 * @return the owner address
 	 */
 	function getOwner() external view returns (address);
-
-	/**
-	 * @dev Creates the "owner" permission and sets the owner of the ActiveAgreement to the specified address.
-	 * This function is used to retrofit older (< v1.1.0) contracts that did not get the owner field set in their initialize() function
-	 * and emit an appropriate event that can be used to update external data systems
-	 * @param _owner the owner of this ActiveAgreement
-	 */
-	function upgradeOwnerPermission(address _owner) external;
 
 }

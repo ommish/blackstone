@@ -221,16 +221,22 @@ contract ActiveAgreement_v1_0_1 is VersionedArtifact, DataStorage, AddressScopes
 	function isSignedBy(address _signee) external view returns (bool);
 
 	/**
+	 * @dev Sets the legal state of this agreement
+	 * @param _legalState the Agreements.LegalState
+	 */
+	function setLegalState(Agreements.LegalState _legalState) external;
+
+	/**
 	 * @dev Returns the legal state of this agreement
 	 * @return the Agreements.LegalState as a uint
 	 */
 	function getLegalState() external view returns (uint8);
 
-	/**
-	 * @dev Sets the legal state of this agreement to Agreements.LegalState.FULFILLED.
-	 * Note: All other legal states are set by internal logic.
-	 */
-	function setFulfilled() external;
+    /**
+     * @dev Sets the legal state of this agreement to Agreements.LegalState.FULFILLED.
+     * !deprecated! use #setLegalState(Agreements.LegalState) instead
+     */
+    function setFulfilled() external;
 
 	/**
 	 * @dev Registers the msg.sender as having cancelled the agreement.
