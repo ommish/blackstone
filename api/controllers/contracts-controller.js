@@ -407,7 +407,7 @@ const addArchetypeParameters = (address, parameters) => new Promise((resolve, re
       if (parseInt(data.raw[0], 10) !== 1) {
         return reject(boom.badImplementation(`Error code adding parameter to archetype at ${address}: ${data.raw[0]}`));
       }
-      log.info(`SUCCESS: Added parameters ${paramNames} to archetype at ${address}`);
+      log.info(`SUCCESS: Added parameters ${parameters.map(({ name }) => name)} to archetype at ${address}`);
       return resolve();
     });
 });
