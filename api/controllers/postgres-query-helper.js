@@ -293,11 +293,13 @@ const QUERIES = {
   getAgreementValidParameters: `SELECT ap.parameter_name AS name, ap.parameter_type AS "parameterType"
     FROM ${chainDb}.agreements ag
     JOIN ${chainDb}.archetype_parameters ap ON ag.archetype_address = ap.archetype_address
-    WHERE ag.agreement_address = $1;`,
+    WHERE ag.agreement_address = $1
+    ORDER BY position;`,
 
   getArchetypeValidParameters: `SELECT ap.parameter_name AS name, ap.parameter_type AS "parameterType"
     FROM ${chainDb}.archetype_parameters ap
-    WHERE ap.archetype_address = $1;`,
+    WHERE ap.archetype_address = $1
+    ORDER BY position;`,
 
   validateRecoveryCode: `SELECT *
     FROM ${appDb}.password_change_requests
