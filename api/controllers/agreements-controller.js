@@ -686,7 +686,6 @@ module.exports = {
   setArchetypeSuccessor,
   updateArchetypeConfiguration,
   addParametersToArchetype,
-  createOrFindAccountsWithEmails,
   setArchetypePrice,
   createArchetypePackage,
   activateArchetypePackage,
