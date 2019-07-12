@@ -529,74 +529,65 @@ const editProfile = asyncMiddleware(async (req, res, next) => {
 });
 
 const createOrFindAccountsWithEmails = async (params, typeKey) => {
-  const newParams = {
-    notAccountOrEmail: [],
-    withEmail: [],
-    forExistingUser: [],
-    forNewUser: [],
-  };
-  params.forEach((param) => {
-    if (param[typeKey] !== PARAM_TYPE.USER_ORGANIZATION && param[typeKey] !== PARAM_TYPE.SIGNING_PARTY) {
-      // Ignore non-account parameters
-      newParams.notAccountOrEmail.push({ ...param });
-    } else if (/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i.test(param.value)) {
-      // Select parameters with email values
-      newParams.withEmail.push({ ...param });
-    } else {
-      // Ignore parameters with non-email values
-      newParams.notAccountOrEmail.push({ ...param });
+  const newParams = [];
+  const withEmail = [];
+  const forNewUser = {};
+  params.forEach((param, index) => {
+    newParams[index] = { ...param };
+    if (
+      (param[typeKey] === PARAM_TYPE.USER_ORGANIZATION || param[typeKey] === PARAM_TYPE.SIGNING_PARTY)
+      && /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i.test(param.value)
+    ) {
+      // Need to get user address from email
+      withEmail.push({ ...param, index });
     }
   });
+  if (!withEmail.length) return { parameters: newParams, newUsers: [] };
   const client = await pool.connect();
   try {
-    let newUsers;
-    if (newParams.withEmail.length) {
-      const { rows } = await client.query({
-        text: `SELECT LOWER(email) AS email, address FROM ${global.db.schema.app}.users WHERE LOWER(email) IN (${newParams.withEmail.map((param, i) => `LOWER($${i + 1})`)});`,
-        values: newParams.withEmail.map(({ value }) => value),
-      });
-      newParams.forNewUser = {};
-      newParams.withEmail.forEach((param) => {
-        const emailAddr = param.value.toLowerCase();
-        const existingUser = rows.find(({ email }) => emailAddr === email);
-        if (existingUser) {
-          // Use existing accounts info if email already registered
-          newParams.forExistingUser.push({ ...param, value: existingUser.address });
-        } else if (newParams.forNewUser[emailAddr]) {
-          // Consolidate users that need to be registered into obj in case the same email was entered for multiple parameters
-          // Also save the parameters that each email was used for
-          newParams.forNewUser[emailAddr].push(param);
-        } else {
-          newParams.forNewUser[emailAddr] = [param];
-        }
-      });
-      const createNewUserPromises = (Object.keys(newParams.forNewUser)).map(async (email) => {
-        // Create user on chain
-        const address = await contracts.createUser({ username: getSHA256Hash(email) });
-        const password = crypto.randomBytes(32).toString('hex');
-        const salt = await bcrypt.genSalt(10);
-        const hash = await bcrypt.hash(password, salt);
-        // Create user in db
-        const queryString = `INSERT INTO ${global.db.schema.app}.users(
-          address, username, email, password_digest, is_producer, external_user
-          ) VALUES(
-            $1, $2, $3, $4, $5, $6
-            );`;
-        await client.query({ text: queryString, values: [address, email, email, hash, false, true] });
-        return { email, address };
-      });
-      newUsers = await Promise.all(createNewUserPromises);
-      newParams.forNewUser = Object.keys(newParams.forNewUser).reduce((acc, emailAddr) => {
-        const { address } = newUsers.find(({ email }) => email === emailAddr);
-        const newUserParams = newParams.forNewUser[emailAddr].map(param => ({ ...param, value: address }));
-        return acc.concat(newUserParams);
-      }, []);
-    }
+    const { rows } = await client.query({
+      text: `SELECT LOWER(email) AS email, address FROM ${global.db.schema.app}.users WHERE LOWER(email) IN (${withEmail.map((param, i) => `LOWER($${i + 1})`)});`,
+      values: withEmail.map(({ value }) => value),
+    });
+    withEmail.forEach((param) => {
+      const emailAddr = param.value.toLowerCase();
+      const existingUser = rows.find(({ email }) => emailAddr === email);
+      if (existingUser) {
+        // Use existing accounts info if email already registered
+        newParams[param.index].value = existingUser.address;
+      } else if (forNewUser[emailAddr]) {
+        // Consolidate users that need to be registered into obj in case the same email was entered for multiple parameters
+        // Also save the parameters that each email was used for
+        forNewUser[emailAddr].push(param);
+      } else {
+        forNewUser[emailAddr] = [param];
+      }
+    });
+    const createNewUserPromises = (Object.keys(forNewUser)).map(async (email) => {
+      // Create user on chain
+      const address = await contracts.createUser({ username: getSHA256Hash(email) });
+      const password = crypto.randomBytes(32).toString('hex');
+      const salt = await bcrypt.genSalt(10);
+      const hash = await bcrypt.hash(password, salt);
+      // Create user in db
+      const queryString = `INSERT INTO ${global.db.schema.app}.users(
+        address, username, email, password_digest, is_producer, external_user
+        ) VALUES(
+          $1, $2, $3, $4, $5, $6
+          );`;
+      await client.query({ text: queryString, values: [address, email, email, hash, false, true] });
+      return { email, address };
+    });
+    const newUsers = await Promise.all(createNewUserPromises);
+    Object.keys(forNewUser).forEach((emailAddr) => {
+      const { address } = newUsers.find(({ email }) => email === emailAddr);
+      forNewUser[emailAddr].forEach((param) => { newParams[param.index].value = address; });
+    });
     // Release client
     client.release();
     // Return all parameters
     return {
-      parameters: newParams.notAccountOrEmail.concat(newParams.forExistingUser).concat(newParams.forNewUser),
+      parameters: newParams,
       newUsers,
     };
   } catch (err) {
