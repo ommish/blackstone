@@ -90,12 +90,10 @@ contract DefaultActiveAgreement is AbstractVersionedArtifact(1,3,0), AbstractAct
 		permissions[ROLE_ID_OWNER].holders.length = 1;
 		permissions[ROLE_ID_OWNER].holders[0] = _owner;
 
-		permissions[ROLE_ID_LEGAL_STATE_CONTROLLER].multiHolder = true;
+		permissions[ROLE_ID_LEGAL_STATE_CONTROLLER].multiHolder = false;
 		permissions[ROLE_ID_LEGAL_STATE_CONTROLLER].revocable = true;
-		permissions[ROLE_ID_LEGAL_STATE_CONTROLLER].transferable = false;
+		permissions[ROLE_ID_LEGAL_STATE_CONTROLLER].transferable = true;
 		permissions[ROLE_ID_LEGAL_STATE_CONTROLLER].exists = true;
-		permissions[ROLE_ID_LEGAL_STATE_CONTROLLER].holders.length = 1;
-		permissions[ROLE_ID_LEGAL_STATE_CONTROLLER].holders[0] = _owner;
 
 		// NOTE: some of the parameters for the event must be read from storage, otherwise "stack too deep" compilation errors occur
 		emit LogAgreementCreation_v1_1_0(
@@ -119,24 +117,61 @@ contract DefaultActiveAgreement is AbstractVersionedArtifact(1,3,0), AbstractAct
 	}
 
 	/**
+	 * @dev Applies the msg.sender or tx.origin as a signature to this agreement, if it can be authorized as a valid signee.
+	 * The timestamp of an already existing signature is not overwritten in case the agreement is signed again by the
+	 * same signatory!
+	 * Once the agreement is fully signed (all signatures applied), its legal state automatically switches to EXECUTED,
+	 * unless an external controller (see permissions[ROLE_ID_LEGAL_STATE_CONTROLLER]) is set.
+	 * REVERTS if:
+	 * - the caller could not be authorized (see AgreementsAPI.authorizePartyActor())
+	 */
+	function sign() external {
+
+		address signee;
+		address party;
+
+		(signee, party) = AgreementsAPI.authorizePartyActor(address(this));
+
+		// if the signee is empty at this point, the authorization is regarded as failed
+		ErrorsLib.revertIf(signee == 0x0, ErrorsLib.UNAUTHORIZED(), "DefaultActiveAgreement.sign()", "The caller is not authorized to sign");
+
+		// the signature is only applied, if no previous signature for the party exists
+		if (signatures[party].timestamp == 0) {
+			signatures[party].signee = signee;
+			signatures[party].timestamp = block.timestamp;
+			emit LogActiveAgreementToPartySignaturesUpdate(EVENT_ID_AGREEMENT_PARTY_MAP, address(this), party, signee, block.timestamp);
+			// if the legal state is not controlled externally and the agreement is executed, change the legal state here
+			if (AgreementsAPI.isFullyExecuted(address(this)) &&
+			   permissions[ROLE_ID_LEGAL_STATE_CONTROLLER].holders.length == 0) {
+				legalState = Agreements.LegalState.EXECUTED;
+				emit LogAgreementLegalStateUpdate(EVENT_ID_AGREEMENTS, address(this), uint8(legalState));
+			}
+		}
+	}
+
+	/**
+	 * @dev Sets the legal state of this agreement
+	 * Note: The modifier pre_validateNextLegalState is currently not applied on this function to allow
+	 * the ROLE_ID_LEGAL_STATE_CONTROLLER to jump to any legal state in order to support importing legacy
+	 * agreements into the system.
+	 * REVERTS if:
+	 * - the msg.sender does not have the ROLE_ID_LEGAL_STATE_CONTROLLER permission
+	 * @param _legalState the Agreements.LegalState
+	 */
+	function setLegalState(Agreements.LegalState _legalState)
+		pre_requiresPermission(ROLE_ID_LEGAL_STATE_CONTROLLER)
+		external
+	{
+		legalState = _legalState;
+		emit LogAgreementLegalStateUpdate(EVENT_ID_AGREEMENTS, address(this), uint8(legalState));
+	}
+
+	/**
 	 * @dev Returns the owner
 	 * @return the owner address or an empty address if not set
 	 */
 	function getOwner() external view returns (address) {
     	return permissions[ROLE_ID_OWNER].holders.length > 0 ? permissions[ROLE_ID_OWNER].holders[0] : address(0);
-	}
-
-	/**
-     * @dev Sets the legal state of this agreement to Agreements.LegalState.FULFILLED.
-	 * !overwrite! AbstractActiveAgreement.setFulfilled()
-	 * !deprecated!can only be invoked for contracts that don't have the ROLE_ID_LEGAL_STATE_CONTROLLER
-	 */
-	function setFulfilled() external {
-		// ErrorsLib.revertIf(permissions[ROLE_ID_LEGAL_STATE_CONTROLLER].exists,
-		// 	ErrorsLib.INVALID_STATE(), "DefaultActiveAgreement.setFulfilled()",
-		// 	"Calling this function is only supported for legacy contracts. Use setLegalState(Agreements.LegalState instead.");
-        legalState = Agreements.LegalState.FULFILLED;
-        emit LogAgreementLegalStateUpdate(EVENT_ID_AGREEMENTS, address(this), uint8(legalState));
 	}
 
 }

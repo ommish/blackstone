@@ -17,6 +17,9 @@ contract ActiveAgreementTest {
 	bytes32 constant EMPTY = "";
 
 	string constant functionSigAgreementInitialize = "initialize(address,address,address,string,bool,address[],address[])";
+	string constant functionSigAgreementSign = "sign()";
+	string constant functionSigAgreementCancel = "cancel()";
+	string constant functionSigAgreementSetLegalState = "setLegalState(uint8)";
 	string constant functionSigUpgradeOwnerPermission = "upgradeOwnerPermission(address)";
 
 	address falseAddress = 0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa;
@@ -130,7 +133,7 @@ contract ActiveAgreementTest {
 		// test signing
 		address signee;
 		uint timestamp;
-		if (address(agreement).call(bytes4(keccak256(abi.encodePacked("sign()")))))
+		if (address(agreement).call(bytes4(keccak256(abi.encodePacked(functionSigAgreementSign)))))
 			return "Signing from test address should REVERT due to invalid actor";
 		(signee, timestamp) = agreement.getSignatureDetails(signer1);
 		if (timestamp != 0) return "Signature timestamp for signer1 should be 0 before signing";
@@ -138,7 +141,7 @@ contract ActiveAgreementTest {
 		if (agreement.getLegalState() == uint8(Agreements.LegalState.EXECUTED)) return "Agreement legal state should NOT be EXECUTED";
 
 		// Signing with Signer1 as party
-		signer1.forwardCall(address(agreement), abi.encodeWithSignature("sign()"));
+		signer1.forwardCall(address(agreement), abi.encodeWithSignature(functionSigAgreementSign));
 		if (!agreement.isSignedBy(signer1)) return "Agreement should be signed by signer1";
 		(signee, timestamp) = agreement.getSignatureDetails(signer1);
 		if (signee != address(signer1)) return "Signee for signer1 should be signer1";
@@ -147,7 +150,7 @@ contract ActiveAgreementTest {
 		if (agreement.getLegalState() == uint8(Agreements.LegalState.EXECUTED)) return "Agreement legal state should NOT be EXECUTED after signer1";
 
 		// Signing with Signer2 via the organization
-		signer2.forwardCall(address(agreement), abi.encodeWithSignature("sign()"));
+		signer2.forwardCall(address(agreement), abi.encodeWithSignature(functionSigAgreementSign));
 		if (!agreement.isSignedBy(signer1)) return "Agreement should be signed by signer2";
 		if (agreement.isSignedBy(org1)) return "Agreement should NOT be signed by org1";
 		(signee, timestamp) = agreement.getSignatureDetails(org1);
@@ -156,7 +159,20 @@ contract ActiveAgreementTest {
 		if (!AgreementsAPI.isFullyExecuted(agreement)) return "AgreementsAPI.isFullyExecuted should be true after signer2";
 		if (agreement.getLegalState() != uint8(Agreements.LegalState.EXECUTED)) return "Agreement legal state should be EXECUTED after signer2";
 
-		// test legal state control for legacy contracts
+		// test external legal state control in combination with signing
+		agreement = new DefaultActiveAgreement();
+		agreement.initialize(archetype, address(this), address(this), dummyPrivateParametersFileRef, false, parties, emptyArray);
+		agreement.initializeObjectAdministrator(address(this));
+		agreement.grantPermission(agreement.ROLE_ID_LEGAL_STATE_CONTROLLER(), address(signer1));
+		signer1.forwardCall(address(agreement), abi.encodeWithSignature(functionSigAgreementSign));
+		signer2.forwardCall(address(agreement), abi.encodeWithSignature(functionSigAgreementSign));
+		if (!AgreementsAPI.isFullyExecuted(agreement)) return "AgreementsAPI.isFullyExecuted should be true after both signatures were applied even with external legal state control";
+		if (agreement.getLegalState() != uint8(Agreements.LegalState.FORMULATED)) return "Agreement legal state should still be FORMULATED with external legal state control";
+		// externally change the legal state
+		if (address(agreement).call(abi.encodeWithSignature(functionSigAgreementSetLegalState, uint8(Agreements.LegalState.EXECUTED))))
+			return "The test contract should not be allowed to change the legal state of the agreement";
+		signer1.forwardCall(address(agreement), abi.encodeWithSignature(functionSigAgreementSetLegalState, uint8(Agreements.LegalState.EXECUTED)));
+		if (agreement.getLegalState() != uint8(Agreements.LegalState.EXECUTED)) return "Agreement legal state should be EXECUTED after legal state controller changed it";
 
 		return SUCCESS;
 	}
@@ -187,22 +203,22 @@ contract ActiveAgreementTest {
 		agreement2.initialize(archetype, address(this), address(this), dummyPrivateParametersFileRef, false, parties, emptyArray);
 
 		// test invalid cancellation and states
-		if (address(agreement1).call(bytes4(keccak256(abi.encodePacked("cancel()")))))
+		if (address(agreement1).call(bytes4(keccak256(abi.encodePacked(functionSigAgreementCancel)))))
 			return "Canceling from test address should REVERT due to invalid actor";
 		if (agreement1.getLegalState() == uint8(Agreements.LegalState.CANCELED)) return "Agreement1 legal state should NOT be CANCELED";
 		if (agreement2.getLegalState() == uint8(Agreements.LegalState.CANCELED)) return "Agreement2 legal state should NOT be CANCELED";
 
 		// Agreement1 is canceled during formation
-		signer2.forwardCall(address(agreement1), abi.encodeWithSignature("cancel()"));
+		signer2.forwardCall(address(agreement1), abi.encodeWithSignature(functionSigAgreementCancel));
 		if (agreement1.getLegalState() != uint8(Agreements.LegalState.CANCELED)) return "Agreement1 legal state should be CANCELED after unilateral cancellation in formation";
 
 		// Agreement2 is canceled during execution
-		signer1.forwardCall(address(agreement2), abi.encodeWithSignature("sign()"));
-		signer2.forwardCall(address(agreement2), abi.encodeWithSignature("sign()"));
+		signer1.forwardCall(address(agreement2), abi.encodeWithSignature(functionSigAgreementSign));
+		signer2.forwardCall(address(agreement2), abi.encodeWithSignature(functionSigAgreementSign));
 		if (agreement2.getLegalState() != uint8(Agreements.LegalState.EXECUTED)) return "Agreemen2 legal state should be EXECUTED after parties signed";
-		signer1.forwardCall(address(agreement2), abi.encodeWithSignature("cancel()"));
+		signer1.forwardCall(address(agreement2), abi.encodeWithSignature(functionSigAgreementCancel));
 		if (agreement2.getLegalState() != uint8(Agreements.LegalState.EXECUTED)) return "Agreement2 legal state should still be EXECUTED after unilateral cancellation";
-		signer2.forwardCall(address(agreement2), abi.encodeWithSignature("cancel()"));
+		signer2.forwardCall(address(agreement2), abi.encodeWithSignature(functionSigAgreementCancel));
 		if (agreement2.getLegalState() != uint8(Agreements.LegalState.CANCELED)) return "Agreement2 legal state should be CANCELED after bilateral cancellation";
 
 		return SUCCESS;

@@ -240,8 +240,3 @@ contract ActiveAgreementRegistryTest {
 		return SUCCESS;
 	}
 }
-
-// Simulates the legacy form of the DefaultActiveAgreement which did not have the LEGAL_STATE_CONTROLLER permission
-contract ActiveAgreement_pre_1_3_0 is DefaultActiveAgreement {
-
-}
