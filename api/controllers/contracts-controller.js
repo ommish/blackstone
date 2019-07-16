@@ -1,5 +1,3 @@
-const fs = require('fs');
-const path = require('path');
 const EventEmitter = require('events');
 const util = require('util');
 const boom = require('boom');
@@ -586,19 +584,6 @@ const setLegalState = (agreementAddress, legalState) => new Promise((resolve, re
     log.info(`SUCCESS: Set legal state of agreement ${agreementAddress} to ${legalState}`);
     return resolve();
   });
-});
-
-const processStateChanged = piAddress => new Promise((resolve, reject) => {
-  log.debug(`REQUEST: Handle state change for process instance ${piAddress}`);
-  appManager
-    .contracts['ActiveAgreementRegistry']
-    .factory.processStateChanged(piAddress, (error) => {
-      if (error) {
-        return reject(boomify(error, `Failed to handle state change for process instance ${piAddress}`));
-      }
-      log.info(`SUCCESS: Handled state change for process instance ${piAddress}`);
-      return resolve();
-    });
 });
 
 const initializeObjectAdministrator = agreementAddress => new Promise((resolve, reject) => {
@@ -1469,7 +1454,6 @@ module.exports = {
   createAgreement,
   grantLegalStateControllerPermission,
   setLegalState,
-  processStateChanged,
   initializeObjectAdministrator,
   setMaxNumberOfAttachments,
   setAddressScopeForAgreementParameters,
