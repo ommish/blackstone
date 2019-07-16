@@ -126,6 +126,18 @@ jobs:
     relation: eq
     val: success
 
+- name: testLegalStateChangeValidation
+  call:
+    destination: $ActiveAgreementTest
+    bin: ActiveAgreementTest
+    function: testLegalStateChangeValidation
+
+- name: assertLegalStateChangeValidation
+  assert:
+    key: $testLegalStateChangeValidation
+    relation: eq
+    val: success
+
 - name: testActiveAgreementSigning
   call:
     destination: $ActiveAgreementTest

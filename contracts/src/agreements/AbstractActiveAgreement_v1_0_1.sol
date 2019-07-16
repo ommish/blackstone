@@ -43,18 +43,27 @@ contract AbstractActiveAgreement_v1_0_1 is AbstractDelegateTarget, AbstractDataS
 	address[] governingAgreements;
 
 	/**
-	 * @dev Checks the valid state transitions
+	 * @dev Checks the valid state transitions according to the below rules.
+	 * The modifer will simply return if the current state already equals the new state.
+	 * It is allowed to "jump" to any legal state, if the current state is UNDEFINED.
+	 * 
+	 * Allowed legal state changes:
+	 * UNDEFINED -> *ANY*
 	 * DRAFT <-> FORMULATED
 	 * FORMULATED -> EXECUTED
 	 * EXECUTED -> FULFILLED | DEFAULT
 	 * DRAFT | FORMULATED | EXECUTED -> CANCELED
 
 	 * REVERTS if:
-	 * - the transition from the current state to the new state is not valid.
+	 * - the transition from the current state to the new state is not valid
 	 * @param _newState the target legal state
 	 */
 	modifier pre_validateNextLegalState(Agreements.LegalState _newState) {
-		if ( (legalState == Agreements.LegalState.DRAFT &&
+		if (legalState == _newState) {
+			return;
+		}
+		if (legalState == Agreements.LegalState.UNDEFINED
+			|| (legalState == Agreements.LegalState.DRAFT &&
 			  (_newState == Agreements.LegalState.FORMULATED || _newState == Agreements.LegalState.CANCELED))
 			|| (legalState == Agreements.LegalState.FORMULATED &&
 			  (_newState == Agreements.LegalState.EXECUTED || _newState == Agreements.LegalState.DRAFT || _newState == Agreements.LegalState.CANCELED))

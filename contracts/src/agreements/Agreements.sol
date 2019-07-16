@@ -6,7 +6,7 @@ pragma solidity ^0.4.25;
  */
 library Agreements {
 
-  enum LegalState {DRAFT, FORMULATED, EXECUTED, FULFILLED, DEFAULT, CANCELED}
+  enum LegalState {DRAFT, FORMULATED, EXECUTED, FULFILLED, DEFAULT, CANCELED, UNDEFINED}
 
   enum CollectionType {CASE, DEAL, DOSSIER, FOLDER, MATTER, PACKAGE, PROJECT}
 
