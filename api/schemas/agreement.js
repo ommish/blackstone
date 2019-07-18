@@ -1,4 +1,4 @@
-const Joi = require('joi');
+const Joi = require('@hapi/joi');
 /*
 sample agreement:
 note- parameters are handled separately

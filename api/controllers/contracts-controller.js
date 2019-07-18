@@ -1,6 +1,6 @@
 const EventEmitter = require('events');
 const util = require('util');
-const boom = require('boom');
+const boom = require('@hapi/boom');
 
 const logger = require(`${global.__common}/logger`);
 const utils = require(`${global.__common}/utils`);
@@ -414,7 +414,7 @@ const addArchetypeDocument = (address, fileReference) => new Promise((resolve, r
   log.debug('REQUEST: Add document to archetype at %s', address);
   appManager
     .contracts['ArchetypeRegistry']
-    .factory.addDocument(address, fileReference, (error, data) => {
+    .factory.addDocument(address, fileReference, (error) => {
       if (error) {
         return reject(boomify(error, `Failed to add document to archetype ${address}`));
       }

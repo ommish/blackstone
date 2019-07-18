@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const _ = require('lodash');
-const boom = require('boom');
+const boom = require('@hapi/boom');
 const logger = require(`${global.__common}/logger`);
 const log = logger.getLogger('controllers.dependencies');
 const {

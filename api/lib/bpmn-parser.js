@@ -2,7 +2,7 @@ const _ = require('lodash');
 const esmRequire = require('esm')(module);
 const BpmnModdle = esmRequire('bpmn-moddle').default;
 const moddle = new BpmnModdle();
-const boom = esmRequire('boom');
+const boom = esmRequire('@hapi/boom');
 
 const BPMN_ROOT_ELEMENTS = 'rootElements';
 const BPMN_DEFINITION = 'bpmn:Definitions';

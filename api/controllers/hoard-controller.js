@@ -3,7 +3,7 @@ const {
   splitMeta,
   asyncMiddleware,
 } = require(`${global.__common}/controller-dependencies`);
-const boom = require('boom');
+const boom = require('@hapi/boom');
 const Hoard = require('@monax/hoard');
 const hoard = new Hoard.Client(global.__settings.hoard);
 

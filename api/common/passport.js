@@ -1,4 +1,4 @@
-const boom = require('boom');
+const boom = require('@hapi/boom');
 const jwt = require('jsonwebtoken');
 const passportJwt = require('passport-jwt');
 const bcrypt = require('bcryptjs');

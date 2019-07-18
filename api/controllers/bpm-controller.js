@@ -1,6 +1,6 @@
 const path = require('path');
-const boom = require('boom');
-const joi = require('joi');
+const boom = require('@hapi/boom');
+const joi = require('@hapi/joi');
 const contracts = require(`${global.__controllers}/contracts-controller`);
 const {
   format,
@@ -8,8 +8,6 @@ const {
   asyncMiddleware,
   byteLength,
 } = require(`${global.__common}/controller-dependencies`);
-const logger = require(`${global.__common}/logger`);
-const log = logger.getLogger('controllers.bpm');
 const parser = require(path.resolve(global.__lib, 'bpmn-parser.js'));
 const {
   hoardPut,
@@ -243,7 +241,7 @@ const completeActivity = asyncMiddleware(async (req, res, next) => {
 });
 
 const saveSignature = async (req, agreementAddress) => {
-  const ip = (req.headers['x-original-forwarded-for'] || '').split(',').pop() || 
+  const ip = (req.headers['x-original-forwarded-for'] || '').split(',').pop() ||
          (req.headers['x-forwarded-for'] || '').split(',').pop() ||
          req.connection.remoteAddress ||
          req.socket.remoteAddress ||

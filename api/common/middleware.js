@@ -1,5 +1,5 @@
 const passport = require('passport');
-const boom = require('boom');
+const boom = require('@hapi/boom');
 
 /**
  * Middleware that authenticates the request with jwt

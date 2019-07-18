@@ -1,6 +1,6 @@
 const path = require('path');
-const boom = require('boom');
-const Joi = require('joi');
+const boom = require('@hapi/boom');
+const Joi = require('@hapi/joi');
 const _ = require('lodash');
 
 const {
