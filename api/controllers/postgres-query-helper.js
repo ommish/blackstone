@@ -163,16 +163,22 @@ const QUERIES = {
     WHERE ap.package_id = $1`,
 
   getAgreementParties: `SELECT parties.party AS address, parties.signature_timestamp::integer AS "signatureTimestamp",
-    parties.signed_by AS "signedBy", COALESCE(party.username, party.name) AS "partyDisplayName",
+    parties.signed_by AS "signedBy", party.name AS "partyDisplayName",
     signer.username AS "signedByDisplayName", canceler.username AS "canceledByDisplayName",
     parties.cancelation_timestamp::integer AS "cancelationTimestamp", parties.canceled_by AS "canceledBy",
     UPPER(encode(scopes.fixed_scope, 'hex')) AS scope, 
     UPPER(encode(o.organization_id::bytea, 'hex')) AS "organizationKey",
     dd.name AS "scopeDisplayName"
     FROM ${chainDb}.agreement_to_party parties
-    LEFT JOIN (SELECT username, NULL AS name, address, external_user FROM ${appDb}.users
+    LEFT JOIN (
+      SELECT (
+        CASE
+        WHEN first_name IS NULL OR last_name IS NULL THEN username
+        ELSE CONCAT(first_name, ' ', last_name)
+        END
+      ) AS name, address, external_user FROM ${appDb}.users
       UNION
-      SELECT NULL AS username, name, address, FALSE AS external_user FROM ${appDb}.organizations
+      SELECT name, address, FALSE AS external_user FROM ${appDb}.organizations
     ) party ON parties.party = party.address
     LEFT JOIN ${appDb}.users signer ON parties.signed_by = signer.address
     LEFT JOIN ${appDb}.users canceler ON parties.canceled_by = canceler.address
@@ -282,11 +288,16 @@ const QUERIES = {
 
   insertUserActivationCode: `INSERT INTO ${appDb}.user_activation_requests (user_id, activation_code_digest) VALUES($1, $2);`,
 
-  getParticipantNames: `SELECT address, COALESCE(username, name) AS "displayName"
+  getParticipantNames: `SELECT address, name AS "displayName"
     FROM (
-      SELECT username, NULL AS name, address FROM ${appDb}.users
+      SELECT (
+        CASE
+        WHEN first_name IS NULL OR last_name IS NULL THEN username
+        ELSE CONCAT(first_name, ' ', last_name)
+        END
+      ) AS name, address FROM ${appDb}.users
       UNION
-      SELECT NULL AS username, name, address FROM ${appDb}.organizations
+      SELECT name, address FROM ${appDb}.organizations
     ) accounts
     WHERE address = ANY($1);`,
 
