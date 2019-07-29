@@ -1087,7 +1087,7 @@ const getParticipantNames = addresses => runQuery(QUERIES.getParticipantNames, [
 
 const getUserByIdType = async ({ idType, id }) => {
   try {
-    const text = `SELECT id, username, email, address, password_digest AS "passwordDigest",
+    const text = `SELECT id, username, email, address, password_digest AS "passwordDigest", external_user AS "externalUser",
     created_at AS "createdAt", activated, first_name AS "firstName", last_name AS "lastName", country, region,
     is_producer AS "isProducer", onboarding
     FROM ${appDb}.users
