@@ -43,6 +43,7 @@
         </bpmn:extensionElements>
         <bpmn:flowNodeRef>Task_0ky8n9d</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>BoundaryEvent_0pye65u</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>IntermediateThrowEvent_1uxk490</bpmn:flowNodeRef>
       </bpmn:lane>
       <bpmn:lane id="Lane_1qvrgtf" name="Assignee">
         <bpmn:extensionElements>
@@ -60,6 +61,14 @@
         <camunda:properties />
       </bpmn:extensionElements>
     </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="SequenceFlow_0s82m79" name="" sourceRef="IntermediateThrowEvent_1uxk490" targetRef="Task_1jrtitw">
+      <bpmn:extensionElements>
+        <camunda:properties />
+      </bpmn:extensionElements>
+    </bpmn:sequenceFlow>
+    <bpmn:userTask id="Task_1jrtitw" name="User Task">
+      <bpmn:incoming>SequenceFlow_0s82m79</bpmn:incoming>
+    </bpmn:userTask>
     <bpmn:userTask id="Task_0ky8n9d" name="Signing Task">
       <bpmn:extensionElements>
         <camunda:properties>
@@ -90,14 +99,6 @@
         </bpmn:timeDate>
       </bpmn:timerEventDefinition>
     </bpmn:boundaryEvent>
-    <bpmn:userTask id="Task_1jrtitw" name="User Task">
-      <bpmn:incoming>SequenceFlow_0s82m79</bpmn:incoming>
-    </bpmn:userTask>
-    <bpmn:sequenceFlow id="SequenceFlow_0s82m79" name="" sourceRef="IntermediateThrowEvent_1uxk490" targetRef="Task_1jrtitw">
-      <bpmn:extensionElements>
-        <camunda:properties />
-      </bpmn:extensionElements>
-    </bpmn:sequenceFlow>
     <bpmn:intermediateCatchEvent id="IntermediateThrowEvent_1uxk490" name="Wait For">
       <bpmn:incoming>SequenceFlow_0twrlls</bpmn:incoming>
       <bpmn:outgoing>SequenceFlow_0s82m79</bpmn:outgoing>
@@ -126,29 +127,29 @@
         <dc:Bounds x="276" y="340" width="570" height="202" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="UserTask_153pn9l_di" bpmnElement="Task_0ky8n9d">
-        <dc:Bounds x="477" y="182" width="100" height="80" />
+        <dc:Bounds x="399" y="207" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="UserTask_0z8n1c6_di" bpmnElement="Task_1jrtitw">
-        <dc:Bounds x="477" y="435" width="100" height="80" />
+        <dc:Bounds x="607" y="397" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="SequenceFlow_0twrlls_di" bpmnElement="SequenceFlow_0twrlls">
-        <di:waypoint x="527" y="262" />
-        <di:waypoint x="527" y="324" />
+        <di:waypoint x="499" y="247" />
+        <di:waypoint x="639" y="247" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNShape id="BoundaryEvent_0pye65u_di" bpmnElement="BoundaryEvent_0pye65u">
-        <dc:Bounds x="559" y="164" width="36" height="36" />
+        <dc:Bounds x="481" y="189" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="559" y="207" width="38" height="14" />
+          <dc:Bounds x="481" y="232" width="38" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="SequenceFlow_0s82m79_di" bpmnElement="SequenceFlow_0s82m79">
-        <di:waypoint x="527" y="360" />
-        <di:waypoint x="527" y="435" />
+        <di:waypoint x="657" y="265" />
+        <di:waypoint x="657" y="397" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNShape id="IntermediateCatchEvent_0dc6sbq_di" bpmnElement="IntermediateThrowEvent_1uxk490">
-        <dc:Bounds x="509" y="324" width="36" height="36" />
+        <dc:Bounds x="639" y="229" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="506" y="367" width="42" height="14" />
+          <dc:Bounds x="636" y="205" width="42" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
     </bpmndi:BPMNPlane>

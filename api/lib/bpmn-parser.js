@@ -383,8 +383,6 @@ const getTimerEventDefinition = (node) => {
     _type = _type || (Object.prototype.hasOwnProperty.call(elem, BPMN_TIMER_TYPES.CYCLE) ? BPMN_TIMER_TYPES.CYCLE : null);
 
     if (_type) {
-      console.log('timerEventDefinition: ', JSON.stringify(elem));
-      console.log('time config: ', JSON.stringify(elem[_type]));
       if (Object.prototype.hasOwnProperty.call(elem, BPMN_EXTENTION_ELEMENTS)) {
         Object.assign(timerEventDefinition, getExtensionElementsFromNode(elem).properties);
       }

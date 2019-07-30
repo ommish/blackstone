@@ -576,6 +576,14 @@ const timerProcess1 = {
   "interface": "Agreement Formation",
   "participants": [
     {
+      "id": "Lane_18i4kvj",
+      "name": "All Parties (Signatories)",
+      "tasks": ["Task_0ky8n9d", "BoundaryEvent_0pye65u", "IntermediateThrowEvent_1uxk490"],
+      "conditionalPerformer": true,
+      "dataStorageId": "agreement",
+      "dataPath": "AGREEMENT_PARTIES"
+    },
+    {
       "id": "Lane_1qvrgtf",
       "name": "Assignee",
       "tasks": ["Task_1jrtitw"],
@@ -583,14 +591,6 @@ const timerProcess1 = {
       "dataStorageId": "agreement",
       "dataPath": "Assignee"
     },
-    {
-      "id": "Lane_18i4kvj",
-      "name": "Agreement Parties (Signatories)",
-      "tasks": ["Task_0ky8n9d", "BoundaryEvent_0ysx6f3", "IntermediateThrowEvent_18c1gi7"],
-      "conditionalPerformer": true,
-      "dataStorageId": "agreement",
-      "dataPath": "AGREEMENT_PARTIES"
-    }
   ],
   "tasks": [],
   "userTasks": [
@@ -602,7 +602,6 @@ const timerProcess1 = {
       "taskType": 1,
       "behavior": 1,
       "multiInstance": false,
-      "dataMappings": [{ "id": "Signby", "direction": 0, "dataPath": "SignBy", "dataStorageId": "" }],
       "application": "",
       "subProcessModelId": "",
       "subProcessDefinitionId": ""
@@ -623,8 +622,8 @@ const timerProcess1 = {
   ],
   "sendTasks": [],
   "transitions": [
-    { "id": "SequenceFlow_0twrlls", "source": "IntermediateThrowEvent_18c1gi7", "target": "Task_1jrtitw" },
-    { "id": "SequenceFlow_0zwb2ij", "source": "Task_0ky8n9d", "target": "IntermediateThrowEvent_18c1gi7" }
+    { "id": "SequenceFlow_0twrlls", "source": "Task_0ky8n9d", "target": "IntermediateThrowEvent_1uxk490" },
+    { "id": "SequenceFlow_0s82m79", "source": "IntermediateThrowEvent_1uxk490", "target": "Task_1jrtitw" },
   ],
   "subProcesses": [],
   "serviceTasks": [],
@@ -633,23 +632,31 @@ const timerProcess1 = {
   "activityMap": { "Task_1jrtitw": "User Task", "Task_0ky8n9d": "Signing Task" },
   "boundaryEvents": [
     {
-      "name": "SignBy",
-      "id": "BoundaryEvent_0ysx6f3",
-      "type": "date",
+      "name": "Sign By",
+      "id": "BoundaryEvent_0pye65u",
       "attachedTo": "Task_0ky8n9d",
-      "dataMappings": [{ "id": "SignBy", "direction": 0, "dataPath": "SignBy", "dataStorageId": "" }],
-      "ESCALATION_ACTION": "CANCEL_AGREEMENT"
+      "timerEventDefinition": {
+        "type": "timeDate",
+        "timeDate": {
+          "dataMappings": [{ "id": "SignBy", "direction": 0, "dataPath": "SignBy", "dataStorageId": "" }],
+        },
+        "escalationAction": "CANCEL_AGREEMENT",
+      },
     }
   ],
   "intermediateCatchEvents": [
     {
       "name": "Wait For",
-      "id": "IntermediateThrowEvent_18c1gi7",
-      "type": "date",
+      "id": "IntermediateThrowEvent_1uxk490",
       "activityType": 0,
       "taskType": 0,
       "behavior": 1,
-      "dataMappings": [{ "id": "WaitFor", "direction": 0, "dataPath": "WaitFor", "dataStorageId": "" }]
+      "timerEventDefinition": {
+        "type": "timeDate",
+        "timeDate": {
+          "dataMappings": [{ "id": "WaitFor", "direction": 0, "dataPath": "WaitFor", "dataStorageId": "" }],
+        },
+      },
     }
   ]
 };
