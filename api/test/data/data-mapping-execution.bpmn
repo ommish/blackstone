@@ -11,8 +11,8 @@
     <bpmn:extensionElements>
       <camunda:properties>
       <camunda:property name="approved" value="0" />
-      <camunda:property name="name" value="0" />
-      <camunda:property name="Administrator" value="8" />
+      <camunda:property name="name" value="1" />
+      <camunda:property name="Administrator" value="6" />
       </camunda:properties>
     </bpmn:extensionElements>
   </bpmn:dataStore>

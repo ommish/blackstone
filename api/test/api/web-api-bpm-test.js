@@ -120,8 +120,9 @@ describe(':: FORMATION - EXECUTION for Incorporation Signing and Fulfilment ::',
     active: 1,
     parameters: [
       { type: 8, name: 'Incorporator' },
-      { type: 6, name: 'Receiver' },
-      { type: 6, name: 'Confirmer' },
+      { type: 8, name: 'Receiver' },
+      { type: 8, name: 'Confirmer' },
+      { type: 0, name: 'Signed' },
     ],
     documents: [{
       name: 'doc1.md',
@@ -318,8 +319,8 @@ describe(':: FORMATION - EXECUTION for Sale of Goods User Tasks ::', () => {
     password: "this is a test",
     formationProcessDefinition: "",
     parameters: [
-      { name: "buyer", type: 6 },
-      { name: "seller", type: 6 }
+      { name: "buyer", type: 8 },
+      { name: "seller", type: 8 }
     ],
     jurisdictions: [{ country: "US", regions: [] }],
     documents: [{
@@ -529,7 +530,9 @@ describe(':: DATA MAPPING TEST ::', function () {
     active: true,
     parameters: [
       { type: 8, name: 'Manager' },
-      { type: 6, name: 'Administrator' }
+      { type: 6, name: 'Administrator' },
+      { type: 1, name: 'name' },
+      { type: 0, name: 'approved' },
     ],
     documents: [{
       name: 'doc1.md',
