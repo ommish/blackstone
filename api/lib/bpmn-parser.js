@@ -372,47 +372,55 @@ const getGatewayFromNode = (node, type) => {
   return response;
 };
 
-const getTimerType = (node) => {
-  let _type;
+const getTimerEventDefinition = (node) => {
+  const timerEventDefinition = {};
   const eventDefnTypes = node[BPMN_EVENT_DEFINITIONS];
   if (eventDefnTypes && eventDefnTypes[0] && eventDefnTypes[0]['$type'] === BPMN_TYPE_TIMER_EVENT_DEFINITION) {
     const elem = eventDefnTypes[0];
-    _type = Object.prototype.hasOwnProperty.call(elem, BPMN_TIMER_TYPES.DATE) ? 'date' : null;
-    _type = _type || (Object.prototype.hasOwnProperty.call(elem, BPMN_TIMER_TYPES.DURATION) ? 'duration' : null);
-    _type = _type || (Object.prototype.hasOwnProperty.call(elem, BPMN_TIMER_TYPES.CYCLE) ? 'cycle' : null);
+    let _type;
+    _type = Object.prototype.hasOwnProperty.call(elem, BPMN_TIMER_TYPES.DATE) ? BPMN_TIMER_TYPES.DATE : null;
+    _type = _type || (Object.prototype.hasOwnProperty.call(elem, BPMN_TIMER_TYPES.DURATION) ? BPMN_TIMER_TYPES.DURATION : null);
+    _type = _type || (Object.prototype.hasOwnProperty.call(elem, BPMN_TIMER_TYPES.CYCLE) ? BPMN_TIMER_TYPES.CYCLE : null);
+
+    if (_type) {
+      console.log('timerEventDefinition: ', JSON.stringify(elem));
+      console.log('time config: ', JSON.stringify(elem[_type]));
+      timerEventDefinition.type = _type;
+      if (Object.prototype.hasOwnProperty.call(elem, BPMN_EXTENTION_ELEMENTS)) {
+        Object.assign(timerEventDefinition, getExtensionElementsFromNode(elem).properties);
+      }
+      timerEventDefinition[_type] = {};
+      if (Object.prototype.hasOwnProperty.call(elem[_type], BPMN_EXTENTION_ELEMENTS)) {
+        Object.assign(timerEventDefinition[_type], getExtensionElementsFromNode(elem[_type]).properties);
+      }
+    }
   }
-  return _type;
+  return timerEventDefinition;
 };
 
 const getTimerBoundaryEventFromNode = (node) => {
-  const _type = getTimerType(node);
-  if (!_type) return {};
+  const timerEventDefinition = getTimerEventDefinition(node);
+  if (!timerEventDefinition.type) return {};
   const response = {
     name: node.name,
     id: node.id,
-    type: _type,
     attachedTo: node[BPMN_EVENT_ATTACHED_TO].id,
+    timerEventDefinition,
   };
-  if (Object.prototype.hasOwnProperty.call(node, BPMN_EXTENTION_ELEMENTS)) {
-    Object.assign(response, getExtensionElementsFromNode(node).properties);
-  }
   return response;
 };
 
 const getIntermediateCatchEventFromNode = (node) => {
-  const _type = getTimerType(node);
-  if (!_type) return {};
+  const timerEventDefinition = getTimerEventDefinition(node);
+  if (!timerEventDefinition.type) return {};
   const response = {
     name: node.name,
     id: node.id,
-    type: _type,
     activityType: BPM_MODEL_ACTIVITY_TYPES.TASK, // under the hood an intermediate catch event is treated as a task
     taskType: BPM_MODEL_TASK_TYPES.NONE, // a dummy task that can be completed by anyone
     behavior: BPM_MODEL_TASK_BEHAVIORS.SENDRECEIVE, // it should wait to be completed
+    timerEventDefinition,
   };
-  if (Object.prototype.hasOwnProperty.call(node, BPMN_EXTENTION_ELEMENTS)) {
-    Object.assign(response, getExtensionElementsFromNode(node).properties);
-  }
   return response;
 };
 
