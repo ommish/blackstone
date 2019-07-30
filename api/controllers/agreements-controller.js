@@ -47,7 +47,7 @@ const _checkObjectsForParamUse = (
   if (!objArray || !objArray.length || parametersLength === paramsRequiredCount) return paramsRequiredCount;
   const { [dataStorageIdFieldName]: dataStorageId, [dataPathFieldName]: dataPath } = objArray.pop();
   let newCount = paramsRequiredCount;
-  if (dataStorageId === AGREEMENT_DATA_ID && dataPath !== AGREEMENT_PARTIES && !paramsRequired[dataPath]) {
+  if (dataStorageId === AGREEMENT_DATA_ID && dataPath !== AGREEMENT_PARTIES && paramsRequired[dataPath] === undefined) {
     newCount += 1;
     paramsRequired[dataPath] = true; // eslint-disable-line no-param-reassign
   }
