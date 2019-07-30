@@ -80,13 +80,13 @@ describe('Archetypes', () => {
   };
 
   let formation = {
-    filePath: 'test/data/inc-formation.bpmn',
+    filePath: 'test/data/AN-TestTemplate-FE.bpmn',
     process: {},
     id: rid(16, 'aA0'),
     name: 'Incorporation-Formation'
   }
   let execution = {
-    filePath: 'test/data/inc-execution.bpmn',
+    filePath: 'test/data/AN-TestTemplate-FE.bpmn',
     process: {},
     id: rid(16, 'aA0'),
     name: 'Incorporation-Execution'
@@ -716,13 +716,13 @@ describe(':: External Users ::', () => {
   };
 
   let formation = {
-    filePath: 'test/data/inc-formation.bpmn',
+    filePath: 'test/data/AN-TestTemplate-FE.bpmn',
     process: {},
     id: rid(16, 'aA0'),
     name: 'Incorporation-Formation'
   }
   let execution = {
-    filePath: 'test/data/inc-execution.bpmn',
+    filePath: 'test/data/AN-TestTemplate-FE.bpmn',
     process: {},
     id: rid(16, 'aA0'),
     name: 'Incorporation-Execution'
@@ -1021,13 +1021,13 @@ describe(':: Agreement Attachments (External References) ::', () => {
   };
 
   const formation = {
-    filePath: 'test/data/inc-formation.bpmn',
+    filePath: 'test/data/AN-TestTemplate-FE.bpmn',
     process: {},
     id: rid(16, 'aA0'),
     name: 'Incorporation-Formation'
   }
   const execution = {
-    filePath: 'test/data/inc-execution.bpmn',
+    filePath: 'test/data/AN-TestTemplate-FE.bpmn',
     process: {},
     id: rid(16, 'aA0'),
     name: 'Incorporation-Execution'

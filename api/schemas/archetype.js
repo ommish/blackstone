@@ -65,7 +65,7 @@ const archetypeSchema = Joi.object().keys({
     .hex()
     .required(),
   description: Joi.string().required(),
-  price: Joi.number().optional().default(0),
+  price: Joi.number().optional().precision(2).default(0),
   isPrivate: [
     Joi.boolean(),
     Joi.number()
@@ -112,7 +112,7 @@ const archetypeSchema = Joi.object().keys({
     }),
   ),
   packageId: Joi.string().optional().default(''),
-  governingArchetypes: Joi.array().items(Joi.string().hex()).optional(),
+  governingArchetypes: Joi.array().items(Joi.string().hex()).optional().default([]),
 });
 
 module.exports = archetypeSchema;

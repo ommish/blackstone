@@ -1,21 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="1.13.0">
- <bpmn:dataStore id="PROCESS_INSTANCE" name="Process Instance">
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="1.13.0">
+  <bpmn:dataStore id="PROCESS_INSTANCE" name="Process Instance">
     <bpmn:extensionElements>
       <camunda:properties>
         <camunda:property name="agreement" value="7" />
       </camunda:properties>
     </bpmn:extensionElements>
-    </bpmn:dataStore>
-    <bpmn:dataStore id="agreement" name="Agreement">
+  </bpmn:dataStore>
+  <bpmn:dataStore id="agreement" name="Agreement">
     <bpmn:extensionElements>
-      <camunda:properties>
-      <camunda:property name="seller" value="8" />
-      <camunda:property name="buyer" value="8" />
-      </camunda:properties>
+      <camunda:properties />
     </bpmn:extensionElements>
   </bpmn:dataStore>
-  <bpmn:collaboration id="Collaboration_010qxhs">
+  <bpmn:collaboration id="Collaboration_1bqszqk">
     <bpmn:extensionElements>
       <camunda:properties>
         <camunda:property name="id" value="###MODEL_ID###" />
@@ -23,69 +20,77 @@
         <camunda:property name="private" value="false" />
       </camunda:properties>
     </bpmn:extensionElements>
-    <bpmn:participant id="Participant_1sbt95n" name="Buy" processRef="buyProcess1" />
-    <bpmn:participant id="Participant_0qd8dyo" name="Ship" processRef="shipProcess1" />
+    <bpmn:participant id="Participant_0afvvg1" name="Signing Formation" processRef="Process_104nkeu" />
+    <bpmn:participant id="Participant_17fk25k" name="No-Op Execution" processRef="Process_0hng27j" />
   </bpmn:collaboration>
-  <bpmn:process id="buyProcess1" name="Buy" isExecutable="true">
+  <bpmn:process id="Process_104nkeu" name="Signing Formation">
     <bpmn:extensionElements>
       <camunda:properties>
         <camunda:property name="processInterface" value="Agreement Formation" />
       </camunda:properties>
     </bpmn:extensionElements>
-    <bpmn:laneSet>
-      <bpmn:lane id="Lane_0dcbbm2" name="Buyer">
+    <bpmn:laneSet id="LaneSet_08x4qvj">
+      <bpmn:lane id="Lane_18i4kvj" name="All Parties (Signatories)">
         <bpmn:extensionElements>
           <camunda:properties>
             <camunda:property name="conditionalPerformer" value="true" />
             <camunda:property name="dataStorageId" value="agreement" />
-            <camunda:property name="dataPath" value="buyer" />
+            <camunda:property name="dataPath" value="AGREEMENT_PARTIES" />
           </camunda:properties>
         </bpmn:extensionElements>
-        <bpmn:flowNodeRef>SignOffPayment</bpmn:flowNodeRef>
-        <bpmn:childLaneSet />
+        <bpmn:flowNodeRef>Task_0ky8n9d</bpmn:flowNodeRef>
       </bpmn:lane>
     </bpmn:laneSet>
-    <bpmn:userTask id="SignOffPayment" name="Sign Off Payment" />
+    <bpmn:userTask id="Task_0ky8n9d" name="Signing Task">
+      <bpmn:extensionElements>
+        <camunda:properties>
+          <camunda:property name="application" value="AgreementSignatureCheck" />
+          <camunda:property name="INDATAID_0" value="agreement" />
+          <camunda:property name="INDATA_agreement_dataStorageId" value="PROCESS_INSTANCE" />
+          <camunda:property name="INDATA_agreement_dataPath" value="agreement" />
+        </camunda:properties>
+      </bpmn:extensionElements>
+      <bpmn:multiInstanceLoopCharacteristics />
+    </bpmn:userTask>
   </bpmn:process>
-  <bpmn:process id="shipProcess1" name="Ship" isExecutable="false">
+  <bpmn:process id="Process_0hng27j" name="No-Op Execution">
     <bpmn:extensionElements>
       <camunda:properties>
         <camunda:property name="processInterface" value="Agreement Execution" />
       </camunda:properties>
     </bpmn:extensionElements>
-    <bpmn:laneSet>
-      <bpmn:lane id="Lane_1fc51gm" name="Seller">
-        <bpmn:extensionElements>
-          <camunda:properties>
-            <camunda:property name="conditionalPerformer" value="true" />
-            <camunda:property name="dataStorageId" value="agreement" />
-            <camunda:property name="dataPath" value="seller" />
-          </camunda:properties>
-        </bpmn:extensionElements>
-        <bpmn:flowNodeRef>ShipGoods</bpmn:flowNodeRef>
+    <bpmn:laneSet id="LaneSet_0yrhwsy">
+      <bpmn:lane id="Lane_13a8mys">
+        <bpmn:flowNodeRef>Task_0ek5v34</bpmn:flowNodeRef>
       </bpmn:lane>
     </bpmn:laneSet>
-    <bpmn:userTask id="ShipGoods" name="Ship Goods" />
+    <bpmn:task id="Task_0ek5v34" name="No-Op">
+      <bpmn:extensionElements>
+        <camunda:properties>
+          <camunda:property name="behavior" value="0" />
+        </camunda:properties>
+      </bpmn:extensionElements>
+    </bpmn:task>
   </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
-    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_010qxhs">
-      <bpmndi:BPMNShape id="Participant_1sbt95n_di" bpmnElement="Participant_1sbt95n">
-        <dc:Bounds x="150" y="94" width="841" height="295" />
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_1bqszqk">
+      <bpmndi:BPMNShape id="Participant_0afvvg1_di" bpmnElement="Participant_0afvvg1">
+        <dc:Bounds x="277" y="95" width="600" height="250" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Lane_0dcbbm2_di" bpmnElement="Lane_0dcbbm2">
-        <dc:Bounds x="180" y="94" width="811" height="295" />
+      <bpmndi:BPMNShape id="Lane_18i4kvj_di" bpmnElement="Lane_18i4kvj">
+        <dc:Bounds x="307" y="95" width="570" height="250" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Participant_0qd8dyo_di" bpmnElement="Participant_0qd8dyo">
-        <dc:Bounds x="150" y="437" width="842" height="251" />
+      <bpmndi:BPMNShape id="UserTask_153pn9l_di" bpmnElement="Task_0ky8n9d">
+        <dc:Bounds x="538" y="166" width="100" height="80" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Lane_1fc51gm_di" bpmnElement="Lane_1fc51gm">
-        <dc:Bounds x="180" y="437" width="812" height="251" />
+      <bpmndi:BPMNShape id="Participant_17fk25k_di" bpmnElement="Participant_17fk25k">
+        <dc:Bounds x="277" y="413" width="601" height="247" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="UserTask_1yoyiyv_di" bpmnElement="ShipGoods">
-        <dc:Bounds x="495" y="523" width="100" height="80" />
+      <bpmndi:BPMNShape id="Lane_13a8mys_di" bpmnElement="Lane_13a8mys">
+        <dc:Bounds x="307" y="413" width="571" height="247" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="UserTask_07d5jxc_di" bpmnElement="SignOffPayment">
-        <dc:Bounds x="510" y="182" width="100" height="80" />
+      <bpmndi:BPMNShape id="Task_0wkecne_di" bpmnElement="Task_0ek5v34">
+        <dc:Bounds x="524" y="486" width="100" height="80" />
       </bpmndi:BPMNShape>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

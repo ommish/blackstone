@@ -27,7 +27,7 @@ const _createPrivatePublicArrays = (parameters, paramsRequired) => {
   const privateParams = [];
   const publicParams = [];
   parameters.forEach((param) => {
-    if (paramsRequired[param.name]) {
+    if (paramsRequired[param.name] !== undefined) {
       publicParams.push(param);
     } else {
       privateParams.push(param);
@@ -88,11 +88,38 @@ const _getParsedModel = async (modelFileRef) => {
   return { dataStoreFields, processes };
 };
 
-const _checkModelsForRequiredParameters = async (archetypeAddress) => {
+const _setRequiredParamType = (dataStoreFields, paramsRequired) => {
+  dataStoreFields.forEach(({ dataStorageId, dataPath, parameterType }) => {
+    if (dataStorageId === AGREEMENT_DATA_ID && paramsRequired[dataPath]) {
+      paramsRequired[dataPath] = parameterType; // eslint-disable-line no-param-reassign
+    }
+  });
+};
+
+const _checkModelsForRequiredParameters = async (archetypeAddress, formationProcessDefinition, executionProcessDefinition, userAddress) => {
+  let formationModelFileReference;
+  let executionModelFileReference;
+  let formationProcessId;
+  let executionProcessId;
   try {
-    const {
-      formationModelFileReference, executionModelFileReference, formationProcessId, executionProcessId,
-    } = (await sqlCache.getArchetypeModelFileReferences(archetypeAddress))[0];
+    if (archetypeAddress) {
+      ({
+        formationModelFileReference, executionModelFileReference, formationProcessId, executionProcessId,
+      } = (await sqlCache.getArchetypeModelFileReferences(archetypeAddress))[0]);
+    } else if (formationProcessDefinition && executionProcessDefinition && userAddress) {
+      ({
+        modelFileReference: formationModelFileReference, processDefinitionId: formationProcessId,
+      } = await sqlCache.getProcessDefinitionData(formationProcessDefinition, userAddress));
+      ({
+        modelFileReference: executionModelFileReference, processDefinitionId: executionProcessId,
+      } = await sqlCache.getProcessDefinitionData(executionProcessDefinition, userAddress));
+    } else {
+      throw boom.badImplementation(`Required parameters for to check for required parameters in models not received: 
+      archetype: ${archetypeAddress},
+      formation: ${formationProcessDefinition},
+      execution: ${executionProcessDefinition},
+      user: ${userAddress}`);
+    }
     const paramsRequired = {};
     let dataStoreFields;
     let processes;
@@ -106,6 +133,7 @@ const _checkModelsForRequiredParameters = async (archetypeAddress) => {
       paramsRequiredCount = await _checkProcessForParamUse(
         processes.find(({ id }) => id === formationProcessId), paramsRequired, parametersLength,
       );
+      _setRequiredParamType(dataStoreFields, paramsRequired);
     }
     if (!executionModelFileReference) return paramsRequired;
     if (formationModelFileReference !== executionModelFileReference) {
@@ -120,6 +148,7 @@ const _checkModelsForRequiredParameters = async (archetypeAddress) => {
     await _checkProcessForParamUse(
       processes.find(({ id }) => id === executionProcessId), paramsRequired, parametersLength, paramsRequiredCount,
     );
+    _setRequiredParamType(dataStoreFields, paramsRequired);
     return paramsRequired;
   } catch (err) {
     if (err.isBoom) throw err;
@@ -162,49 +191,54 @@ const getArchetype = asyncMiddleware(async (req, res, next) => {
 
 const createArchetype = asyncMiddleware(async (req, res, next) => {
   if (!req.body || Object.keys(req.body).length === 0) throw boom.badRequest('Archetype data required');
-  let type = { ...req.body };
-  type.parameters = type.parameters || [];
-  type.author = req.user.address;
-  if (!type.owner) type.owner = type.author;
-  log.debug(`Request to create new archetype: ${type.name}`);
-  const { value, error } = Joi.validate(type, archetypeSchema, { abortEarly: false });
+  let arch = { ...req.body };
+  arch.parameters = arch.parameters || [];
+  arch.author = req.user.address;
+  if (!arch.owner) arch.owner = arch.author;
+  log.debug(`Request to create new archetype: ${arch.name}`);
+
+  const { value, error } = Joi.validate(arch, archetypeSchema, { abortEarly: false });
   if (error) throw boom.badRequest(`Required fields missing or malformed: ${error}`);
-  type = value;
-  type.governingArchetypes = type.governingArchetypes || [];
-  type.price = parseFloat(type.price, 10);
-  type.active = type.active || false;
-  if (type.packageId) {
+  arch = value;
+
+  if (arch.packageId) {
     let packageData;
     try {
-      packageData = await sqlCache.getArchetypePackage(type.packageId, req.user.address);
+      packageData = await sqlCache.getArchetypePackage(arch.packageId, req.user.address);
     } catch (err) {
       if (err.isBoom && err.output.statusCode === 404) {
-        throw boom.badRequest(`Given packageId ${type.packageId} does not exist, or may not be accessible to user`);
+        throw boom.badRequest(`Given packageId ${arch.packageId} does not exist, or may not be accessible to user`);
       }
       throw boom.badImplementation(err);
     }
-    if (packageData.author !== req.user.address) throw boom.forbidden(`Package with id ${type.packageId} is not modifiable by user at address ${req.user.address}`);
-    if (type.isPrivate && !packageData.isPrivate) throw boom.badRequest(`Private archetype ${type.name} cannot be added to public package with id ${type.packageId}`);
+    if (packageData.author !== req.user.address) throw boom.forbidden(`Package with id ${arch.packageId} is not modifiable by user at address ${req.user.address}`);
+    if (arch.isPrivate && !packageData.isPrivate) throw boom.badRequest(`Private archetype ${arch.name} cannot be added to public package with id ${arch.packageId}`);
   }
-  let validOwner = type.owner === req.user.address;
+
+  let validOwner = arch.owner === req.user.address;
   if (!validOwner) {
-    const userOrgStatus = await sqlCache.userStatusInOrganization(type.owner, req.user.address);
+    const userOrgStatus = await sqlCache.userStatusInOrganization(arch.owner, req.user.address);
     validOwner = (userOrgStatus.isMember || userOrgStatus.isApprover);
   }
-  if (!validOwner) throw boom.badRequest(`Owner ${type.owner} is not a valid organization address, or the user is not a member or approver of the organization.`);
-  delete type.name; // don't save these parameters on chain
-  delete type.description;
-  const archetypeAddress = await contracts.createArchetype(type);
-  if (type.parameters.length > 0) {
-    await contracts.addArchetypeParameters(archetypeAddress, type.parameters);
+  if (!validOwner) throw boom.badRequest(`Owner ${arch.owner} is not a valid organization address, or the user is not a member or approver of the organization.`);
+
+  const requiredParams = await _checkModelsForRequiredParameters(null, arch.formationProcessDefinition, arch.executionProcessDefinition, req.user.address);
+  const missingParams = Object.keys(requiredParams).filter(param => !arch.parameters.find(({ name, type }) => name === param && type === requiredParams[param]));
+  if (missingParams.length) {
+    throw boom.badRequest(`Parameters used in model not all found in archetype parameters: ${missingParams}`);
   }
-  if (type.documents) {
-    await contracts.addArchetypeDocuments(archetypeAddress, type.documents);
+
+  const archetypeAddress = await contracts.createArchetype(arch);
+  if (arch.parameters.length > 0) {
+    await contracts.addArchetypeParameters(archetypeAddress, arch.parameters);
   }
-  if (type.jurisdictions) {
-    await contracts.addJurisdictions(archetypeAddress, type.jurisdictions);
+  if (arch.documents) {
+    await contracts.addArchetypeDocuments(archetypeAddress, arch.documents);
   }
-  await sqlCache.insertArchetypeDetails({ address: archetypeAddress, name: req.body.name, description: _.escape(req.body.description) });
+  if (arch.jurisdictions) {
+    await contracts.addJurisdictions(archetypeAddress, arch.jurisdictions);
+  }
+  await sqlCache.insertArchetypeDetails({ address: archetypeAddress, name: arch.name, description: _.escape(arch.description) });
   res.locals.data = { address: archetypeAddress };
   res.status(200);
   return next();
@@ -678,6 +712,7 @@ const addAgreementToCollection = asyncMiddleware(async (req, res, next) => {
 });
 
 module.exports = {
+  _checkModelsForRequiredParameters,
   getArchetypes,
   getArchetype,
   createArchetype,
