@@ -308,7 +308,7 @@ describe(':: FORMATION - EXECUTION for Incorporation Signing and Fulfilment ::',
  */
 describe(':: FORMATION - EXECUTION for Sale of Goods User Tasks ::', () => {
 
-  const model = { id: rid(16, 'aA0'), filePath: 'test/data/AN-TestTemplate-FE.bpmn' };
+  const model = { id: rid(16, 'aA0'), filePath: 'test/data/AN-TestTemplate-sale.bpmn' };
   const archetype1 = {
     name: "Archetype 1",
     description: "Archetype 1",
