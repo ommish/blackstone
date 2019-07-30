@@ -114,7 +114,7 @@ const _checkModelsForRequiredParameters = async (archetypeAddress, formationProc
         modelFileReference: executionModelFileReference, processDefinitionId: executionProcessId,
       } = await sqlCache.getProcessDefinitionData(executionProcessDefinition, userAddress));
     } else {
-      throw boom.badImplementation(`Required parameters for to check for required parameters in models not received: 
+      throw boom.badImplementation(`Some or all arguments needed to check for required parameters in models not received: 
       archetype: ${archetypeAddress},
       formation: ${formationProcessDefinition},
       execution: ${executionProcessDefinition},
