@@ -385,10 +385,10 @@ const getTimerEventDefinition = (node) => {
     if (_type) {
       console.log('timerEventDefinition: ', JSON.stringify(elem));
       console.log('time config: ', JSON.stringify(elem[_type]));
-      timerEventDefinition.type = _type;
       if (Object.prototype.hasOwnProperty.call(elem, BPMN_EXTENTION_ELEMENTS)) {
         Object.assign(timerEventDefinition, getExtensionElementsFromNode(elem).properties);
       }
+      timerEventDefinition.type = _type;
       timerEventDefinition[_type] = {};
       if (Object.prototype.hasOwnProperty.call(elem[_type], BPMN_EXTENTION_ELEMENTS)) {
         Object.assign(timerEventDefinition[_type], getExtensionElementsFromNode(elem[_type]).properties);
