@@ -678,14 +678,29 @@ const getAgreementData = (agreementAddress, userAccount, includePublic = true) =
     a.max_event_count::integer as "maxNumberOfAttachments", a.is_private as "isPrivate", a.legal_state as "legalState",
     a.formation_process_instance as "formationProcessInstance", a.execution_process_instance as "executionProcessInstance",
     UPPER(encode(ac.collection_id::bytea, 'hex')) as "collectionId",
-    arch.formation_process_definition as "formationProcessDefinition", arch.execution_process_definition as "executionProcessDefinition", (
-      SELECT COALESCE(accounts.username, accounts.name)
+    arch.formation_process_definition as "formationProcessDefinition", arch.execution_process_definition as "executionProcessDefinition", 
+    (
+      SELECT COALESCE(creator_account.name, creator_account.username)
       FROM (
-        SELECT username, NULL as name FROM ${appDb}.users u WHERE u.address = a.creator
+        SELECT username, 
+          (CASE WHEN u.first_name IS NOT NULL THEN concat_ws(' ', u.first_name, u.last_name) ELSE NULL END) AS name
+          FROM ${appDb}.users u WHERE u.address = a.creator
         UNION
-        SELECT NULL as username, name FROM ${appDb}.organizations o WHERE o.address = a.creator
-      ) accounts
+        SELECT NULL as username, name
+          FROM ${appDb}.organizations o WHERE o.address = a.creator
+      ) creator_account
     ) AS "creatorDisplayName",
+    (
+      SELECT COALESCE(owner_account.name, owner_account.username)
+      FROM (
+        SELECT username,
+          (CASE WHEN u.first_name IS NOT NULL THEN concat_ws(' ', u.first_name, u.last_name) ELSE NULL END) as name
+          FROM ${appDb}.users u WHERE u.address = a.owner
+        UNION
+        SELECT NULL as username, name
+          FROM ${appDb}.organizations o WHERE o.address = a.owner
+      ) owner_account
+    ) AS "ownerDisplayName",
     ${checkParties(userAccount)} AS "isParty",
     ${checkCreator(userAccount)} AS "isCreator",
     ${checkAgreementTasks(userAccount)} AS "isAssignedTask"
