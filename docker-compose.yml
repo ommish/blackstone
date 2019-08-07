@@ -31,9 +31,14 @@ services:
     - start
   vent:
     # Pinning a dev image of burrow that contains the append-only event log feature in Vent
-    image: quay.io/monax/burrow:0.27.0-dev-2019-08-02-fd379f4e
+    build:
+      context: .
+      args:
+        BURROW_REPO: quay.io/monax/burrow
+        BURROW_VERSION: 0.27.0-dev-2019-08-02-fd379f4e
     restart: always
     command:
+    - burrow
     - vent
     - start
     - --db-adapter
