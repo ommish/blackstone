@@ -1,7 +1,7 @@
 [
   {
     "TableName": "event_log",
-    "Filter": "Log1Text = 'AN://activity-instances'",
+    "Filter": "Log1Text = 'AN://agreements' OR Log1Text = 'AN://archetypes' OR Log1Text = 'AN://activity-instances' OR Log1Text = 'AN://process-instances' OR Log1Text = 'AN://user-accounts'",
     "FieldMappings": [
       {
         "Field": "activityInstanceId",
