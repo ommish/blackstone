@@ -30,12 +30,12 @@ services:
     - burrow
     - start
   vent:
-    # Vent is using burrow 0.28.1 which contains the append-only event log feature
+    # Vent is using burrow 0.28.2 which contains the append-only event log feature
     build:
       context: .
       args:
         BURROW_REPO: hyperledger/burrow
-        BURROW_VERSION: "0.28.1"
+        BURROW_VERSION: "0.28.2"
     restart: always
     command:
     - burrow
