@@ -8,23 +8,29 @@ import "commons-collections/DataStorageUtils.sol";
  */
 library BpmModel {
 
-    enum ModelElementType {ACTIVITY,GATEWAY}   
+    enum ModelElementType {ACTIVITY,GATEWAY,INTERMEDIATE_EVENT, BOUNDARY_EVENT}
     enum ActivityType {TASK,SUBPROCESS}
     // TaskTypes were reduced/modified from BPMN spec (USER,MANUAL,SERVICE,SCRIPT,RULE,SEND,RECEIVE) to fit better to EVM reality
     enum TaskType {NONE,USER,SERVICE,EVENT}
     enum GatewayType {XOR,OR,AND}
+    enum IntermediateEventBehavior {CATCHING,THROWING}
+    enum BoundaryEventBehavior {INTERRUPTING,NON_INTERRUPTING}
+    enum EventType {TIMER_TIMESTAMP,TIMER_DURATION}
     enum TaskBehavior {SEND,SENDRECEIVE,RECEIVE}
     enum ApplicationType {EVENT,SERVICE,WEB}
     enum Direction {IN,OUT}
 	
     /**
-     * @dev wrapper struct around an activity or a gateway. Facilitates traversing the model
+     * @dev wrapper struct around an activity, a gateway, or an intermediate event.
+     * Facilitates traversing the model.
      */
     struct ModelElement {
         bytes32 id;
         ModelElementType elementType;
         ActivityDefinition activity;
         Gateway gateway;
+        IntermediateEvent intermediateEvent;
+        BoundaryEvent boundaryEvent;
         bool exists;
     }
 
@@ -36,26 +42,8 @@ library BpmModel {
         mapping(bytes32 => ModelElement) rows;
         bytes32[] activityIds;
         bytes32[] gatewayIds;
-    }
-
-    /**
-     * PROCESS DEFINITION
-     */
-    struct ProcessDefinition {
-        bytes32 id;
-        mapping(bytes32 => ActivityDefinition) activities;
-        mapping(bytes32 => Gateway) gateways;
-    }
-
-    struct ProcessDefinitionMap {
-        mapping(bytes32 => ProcessDefinitionElement) rows;
-        bytes32[] keys;
-    }
-
-    struct ProcessDefinitionElement {
-        uint keyIdx;
-        ProcessDefinition value;
-        bool exists;
+        bytes32[] intermediateEventIds;
+        bytes32[] boundaryEventIds;
     }
 
     /**
@@ -122,6 +110,7 @@ library BpmModel {
         bytes32[] outMappingKeys;
         mapping(bytes32 => DataStorageUtils.ConditionalData) inMappings;
         mapping(bytes32 => DataStorageUtils.ConditionalData) outMappings;
+        bytes32[] boundaryEventIds;
     }
 
     /**
@@ -133,6 +122,38 @@ library BpmModel {
         bytes32 defaultOutput; // only applies to XOR or OR gateways to specify which of the output transitions is to be used as default.
         bytes32[] inputs;
         bytes32[] outputs;
+    }
+
+    /**
+     * INTERMEDIATE EVENT
+     */
+    struct IntermediateEvent {
+        bytes32 id;
+        EventType eventType;
+        IntermediateEventBehavior eventBehavior;
+        DataStorageUtils.ConditionalData conditionalData;
+        Primitive primitiveData;
+        bytes32 predecessor;
+        bytes32 successor;
+    }
+
+    /**
+     * BOUNDARY EVENT
+     */
+    struct BoundaryEvent {
+        bytes32 id;
+        EventType eventType;
+        BoundaryEventBehavior eventBehavior;
+        DataStorageUtils.ConditionalData conditionalData;
+        Primitive primitiveData;
+        bytes32 successor;
+        BoundaryEventAction[] actions;
+    }
+
+    struct BoundaryEventAction {
+        DataStorageUtils.ConditionalData conditionalTarget;
+        address fixedTarget;
+        bytes4 targetFunction;
     }
 
     /**

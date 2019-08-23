@@ -114,7 +114,7 @@ contract DefaultProcessDefinition is AbstractVersionedArtifact(1,0,0), AbstractD
 	 * @param _assignee the ID of the participant performing the activity (for USER tasks only)
 	 * @param _multiInstance whether the activity represents multiple instances
 	 * @param _application the application handling the execution of the activity
-	 * @param _subProcessModelId references the model containg a subprocess definition (only for SUBPROCESS ActivityType)
+	 * @param _subProcessModelId references the model containing a subprocess definition (only for SUBPROCESS ActivityType)
 	 * @param _subProcessDefinitionId references a subprocess definition (only for SUBPROCESS ActivityType)
 	 * @return BaseErrors.RESOURCE_ALREADY_EXISTS() if an activity with the same ID already exists
 	 * @return BaseErrors.INVALID_PARAM_VALUE() if an assignee is specified, but the BpmModel.TaskType is not USER
@@ -172,7 +172,8 @@ contract DefaultProcessDefinition is AbstractVersionedArtifact(1,0,0), AbstractD
 
 	/**
 	 * @dev Creates a new BpmModel.Gateway model element with the specified ID and type
-	 * REVERTS: if the ID already exists
+	 * REVERTS if:
+	 * - the ID already exists as a model element
 	 * @param _id the ID under which to register the element
 	 * @param _type a BpmModel.GatewayType
 	 */
@@ -181,12 +182,121 @@ contract DefaultProcessDefinition is AbstractVersionedArtifact(1,0,0), AbstractD
 		pre_invalidate
 	{
 		ErrorsLib.revertIf(graphElements.rows[_id].exists,
-			"BPM400","ProcessDefinition.createGateway","Graph element with _id already exists");
+			ErrorsLib.RESOURCE_ALREADY_EXISTS(), "ProcessDefinition.createGateway", "Graph element with _id already exists");
 		graphElements.gatewayIds.push(_id);
 		graphElements.rows[_id].elementType = BpmModel.ModelElementType.GATEWAY;
 		graphElements.rows[_id].gateway.id = _id;
 		graphElements.rows[_id].gateway.gatewayType = _type;
 		graphElements.rows[_id].exists = true;
+	}
+
+	/**
+	 * Creates a new intermediate event definition with the specified parameters and conditional (DataStorage-based) data
+	 * or constant uint value. If a constant value is provided, the conditional data will be ignored! 
+	 * REVERTS if:
+	 * - the ID already exists as a model element
+	 * @param _id the ID under which to register the element
+	 * @param _eventType a BpmModel.EventType. Note that TIMER_TIMESTAMP and TIMER_DURATION event types enforce CATCHING behavior.
+	 * @param _eventBehavior a BpmModel.IntermediateEventBehavior
+	 * @param _dataPath a data path (key) to use for data lookup on a DataStorage.
+	 * @param _dataStorageId an optional key to identify a DataStorage as basis for the data path other than the default one
+	 * @param _dataStorage an optional address of a DataStorage as basis for the data path other than the default one
+	 * @param _constantValue a fixed value for timer based events representing either a datetime or a duration in secs
+	 */
+	function createIntermediateEvent(bytes32 _id, BpmModel.EventType _eventType, BpmModel.IntermediateEventBehavior _eventBehavior, bytes32 _dataPath, bytes32 _dataStorageId, address _dataStorage, uint256 _constantValue)
+		external
+		pre_invalidate
+	{
+		ErrorsLib.revertIf(graphElements.rows[_id].exists,
+			ErrorsLib.RESOURCE_ALREADY_EXISTS(), "ProcessDefinition.createIntermediateEvent", "Graph element with _id already exists");
+		graphElements.intermediateEventIds.push(_id);
+		graphElements.rows[_id].elementType = BpmModel.ModelElementType.INTERMEDIATE_EVENT;
+		graphElements.rows[_id].intermediateEvent.id = _id;
+		graphElements.rows[_id].intermediateEvent.eventType = _eventType;
+		if (_eventType == BpmModel.EventType.TIMER_TIMESTAMP || _eventType == BpmModel.EventType.TIMER_DURATION)
+			graphElements.rows[_id].intermediateEvent.eventBehavior = BpmModel.IntermediateEventBehavior.CATCHING;
+		else
+			graphElements.rows[_id].intermediateEvent.eventBehavior = _eventBehavior;
+		if (_constantValue > 0) {
+			graphElements.rows[_id].intermediateEvent.primitiveData.uintValue = _constantValue;
+		}
+		else {
+			graphElements.rows[_id].intermediateEvent.conditionalData.dataPath = _dataPath;
+			graphElements.rows[_id].intermediateEvent.conditionalData.dataStorageId = _dataStorageId;
+			graphElements.rows[_id].intermediateEvent.conditionalData.dataStorage = _dataStorage;
+		}
+		graphElements.rows[_id].exists = true;
+	}
+
+	/**
+	 * @dev Addes a boundary event to the specified activity using the provided ID, parameters, conditional (DataStorage-based)
+	 * data or constant uint value. If a constant value is provided, the conditional data will be ignored! 
+	 * REVERTS if:
+	 * - the activity does not exist
+	 * - the event ID already exists as a model element
+	 * @param _activityId the activity for which the boundary event is added
+	 * @param _id the ID under which to register the element
+	 * @param _eventType a BpmModel.EventType. Note that TIMER_TIMESTAMP and TIMER_DURATION event types enforce CATCHING behavior.
+	 * @param _eventBehavior a BpmModel.IntermediateEventBehavior
+	 * @param _dataPath a data path (key) to use for data lookup on a DataStorage.
+	 * @param _dataStorageId an optional key to identify a DataStorage as basis for the data path other than the default one
+	 * @param _dataStorage an optional address of a DataStorage as basis for the data path other than the default one
+	 * @param _constantValue a fixed value for timer based events representing either a datetime or a duration in secs
+	 */
+	function addBoundaryEvent(bytes32 _activityId, bytes32 _id, BpmModel.EventType _eventType, BpmModel.BoundaryEventBehavior _eventBehavior, bytes32 _dataPath, bytes32 _dataStorageId, address _dataStorage, uint256 _constantValue)
+		external
+		pre_invalidate
+	{
+		ErrorsLib.revertIf(!(graphElements.rows[_activityId].exists && graphElements.rows[_activityId].elementType == BpmModel.ModelElementType.ACTIVITY), 
+			ErrorsLib.INVALID_PARAMETER_STATE(), "DefaultProcessDefinition.addBoundaryEvent", "Cannot create boundary event since given activityId is either non-existent or not of the correct type BpmModel.ModelElementType.ACTIVITY");
+		ErrorsLib.revertIf(graphElements.rows[_id].exists,
+			ErrorsLib.RESOURCE_ALREADY_EXISTS(),"ProcessDefinition.addBoundaryEvent","Graph element with _id already exists");
+		// no need to check if the event already exists in the activity.boundaryEventIds, because the same ID would already be in the graphElements.rows and is covered by the prior check
+
+		graphElements.boundaryEventIds.push(_id);
+		graphElements.rows[_id].elementType = BpmModel.ModelElementType.BOUNDARY_EVENT;
+		graphElements.rows[_id].boundaryEvent.id = _id;
+		graphElements.rows[_id].boundaryEvent.eventType = _eventType;
+		graphElements.rows[_id].boundaryEvent.eventBehavior = _eventBehavior;
+		if (_constantValue > 0) {
+			graphElements.rows[_id].boundaryEvent.primitiveData.uintValue = _constantValue;
+		}
+		else {
+			graphElements.rows[_id].boundaryEvent.conditionalData.dataPath = _dataPath;
+			graphElements.rows[_id].boundaryEvent.conditionalData.dataStorageId = _dataStorageId;
+			graphElements.rows[_id].boundaryEvent.conditionalData.dataStorage = _dataStorage;
+		}
+		graphElements.rows[_activityId].activity.boundaryEventIds.push(_id);
+		graphElements.rows[_id].exists = true;
+	}
+
+	/**
+	 * @dev Adds an event action to a given boundary event.
+	 * @param _id the boundary event ID
+	 * @param _dataPath a data path (key) to use for data lookup on a DataStorage to find the escalation target
+	 * @param _dataStorageId an optional key to identify a DataStorage as basis for the data path to find the escalation target
+	 * @param _dataStorage an optional address of a DataStorage as basis for the data path to find the escalation target
+	 * @param _fixedTarget a fixed address for the escalation target
+	 * @param _actionFunction a function signature to be invoked on the escalation target
+	 */
+	function addBoundaryEventAction(bytes32 _id, bytes32 _dataPath, bytes32 _dataStorageId, address _dataStorage, address _fixedTarget, string _actionFunction)
+		external
+		pre_invalidate
+	{
+		ErrorsLib.revertIf(!(graphElements.rows[_id].exists && graphElements.rows[_id].elementType == BpmModel.ModelElementType.BOUNDARY_EVENT), 
+			ErrorsLib.INVALID_PARAMETER_STATE(), "DefaultProcessDefinition.addBoundaryEventAction", "Cannot add boundary event action since the given ID is either non-existent or not of the correct type BpmModel.ModelElementType.BOUNDARY_EVENT");
+		ErrorsLib.revertIf(_dataPath.isEmpty() && _fixedTarget == address(0), 
+			ErrorsLib.INVALID_INPUT(), "DefaultProcessDefinition.addBoundaryEventAction", "Either a ConditionalData (via a _dataPath at a minimum) or a _fixedEscalationTartget must be provided");
+		ErrorsLib.revertIf(bytes(_actionFunction).length == 0, 
+			ErrorsLib.NULL_PARAMETER_NOT_ALLOWED(), "DefaultProcessDefinition.addBoundaryEventAction", "Action function parameter must not be empty");
+		BpmModel.BoundaryEventAction memory action;
+		action.conditionalTarget.dataPath = _dataPath;
+		action.conditionalTarget.dataStorageId = _dataStorageId;
+		action.conditionalTarget.dataStorage = _dataStorage;
+		action.fixedTarget = _fixedTarget;
+		action.targetFunction = bytes4(keccak256(abi.encodePacked(_actionFunction)));
+		graphElements.rows[_id].boundaryEvent.actions.push(action);
+		
 	}
 
 	/**
@@ -201,33 +311,60 @@ contract DefaultProcessDefinition is AbstractVersionedArtifact(1,0,0), AbstractD
 	 */
 	function createTransition(bytes32 _source, bytes32 _target) external pre_invalidate returns (uint) {
 		ErrorsLib.revertIf(!graphElements.rows[_source].exists,
-			"ERR404","ProcessDefinition.createTransition","_source graph element not found");
+			ErrorsLib.RESOURCE_NOT_FOUND(), "ProcessDefinition.createTransition", "source graph element not found");
 		ErrorsLib.revertIf(!graphElements.rows[_target].exists,
-			"ERR404","ProcessDefinition.createTransition","_target graph element not found");
+			ErrorsLib.RESOURCE_NOT_FOUND(), "ProcessDefinition.createTransition", "target graph element not found");
 
 		// SOURCE
 		if (graphElements.rows[_source].elementType == BpmModel.ModelElementType.ACTIVITY) {
 			// not allowed to overwrite an existing transition since it can leave dangling references if it was connected to a gateway
 			ErrorsLib.revertIf(graphElements.rows[_source].activity.successor != "",
-				"BPM400","ProcessDefinition.createTransition","Not allowed to overwrite an existing successor of an activity");
+				ErrorsLib.OVERWRITE_NOT_ALLOWED(),"ProcessDefinition.createTransition","Not allowed to overwrite an existing successor of an activity");
 			graphElements.rows[_source].activity.successor = _target;
+		}
+		else if (graphElements.rows[_source].elementType == BpmModel.ModelElementType.INTERMEDIATE_EVENT) {
+			// not allowed to overwrite an existing transition since it can leave dangling references if it was connected to a gateway
+			ErrorsLib.revertIf(graphElements.rows[_source].intermediateEvent.successor != "",
+				ErrorsLib.OVERWRITE_NOT_ALLOWED(),"ProcessDefinition.createTransition","Not allowed to overwrite an existing successor of an intermediate event");
+			graphElements.rows[_source].intermediateEvent.successor = _target;
+		}
+		else if (graphElements.rows[_source].elementType == BpmModel.ModelElementType.BOUNDARY_EVENT) {
+			// not allowed to overwrite an existing transition since it can leave dangling references if it was connected to a gateway
+			ErrorsLib.revertIf(graphElements.rows[_source].boundaryEvent.successor != "",
+				ErrorsLib.OVERWRITE_NOT_ALLOWED(),"ProcessDefinition.createTransition","Not allowed to overwrite an existing successor of a boundary event");
+			graphElements.rows[_source].boundaryEvent.successor = _target;
 		}
 		else if (graphElements.rows[_source].elementType == BpmModel.ModelElementType.GATEWAY) {
 			if (!graphElements.rows[_source].gateway.outputs.contains(_target)) { // avoid duplicates
 				graphElements.rows[_source].gateway.outputs.push(_target);
 			}
 		}
+		else {
+			revert(ErrorsLib.format(ErrorsLib.INVALID_INPUT(),
+				"ProcessDefinition.createTransition", "Unknown/Unsupported BpmModel.ModelElementType for source element"));
+		}
+
 		// TARGET
 		if (graphElements.rows[_target].elementType == BpmModel.ModelElementType.ACTIVITY) {
 			// not allowed to overwrite an existing transition since it can leave dangling references if it was connected to a gateway
 			ErrorsLib.revertIf(graphElements.rows[_target].activity.predecessor != "",
-				"BPM400","ProcessDefinition.createTransition","Not allowed to overwrite an existing predecessor of an activity");
+				ErrorsLib.OVERWRITE_NOT_ALLOWED(),"ProcessDefinition.createTransition","Not allowed to overwrite an existing predecessor of an activity");
 			graphElements.rows[_target].activity.predecessor = _source;
+		}
+		else if (graphElements.rows[_target].elementType == BpmModel.ModelElementType.INTERMEDIATE_EVENT) {
+			// not allowed to overwrite an existing transition since it can leave dangling references if it was connected to a gateway
+			ErrorsLib.revertIf(graphElements.rows[_target].intermediateEvent.predecessor != "",
+				ErrorsLib.OVERWRITE_NOT_ALLOWED(),"ProcessDefinition.createTransition","Not allowed to overwrite an existing predecessor of an intermediate event");
+			graphElements.rows[_target].intermediateEvent.predecessor = _source;
 		}
 		else if (graphElements.rows[_target].elementType == BpmModel.ModelElementType.GATEWAY) {
 			if (!graphElements.rows[_target].gateway.inputs.contains(_source)) { // avoid duplicates
 				graphElements.rows[_target].gateway.inputs.push(_source);
 			}
+		}
+		else {
+			revert(ErrorsLib.format(ErrorsLib.INVALID_INPUT(),
+				"ProcessDefinition.createTransition", "Unknown/Unsupported BpmModel.ModelElementType for target element"));
 		}
 
 		return BaseErrors.NO_ERROR();
@@ -261,7 +398,7 @@ contract DefaultProcessDefinition is AbstractVersionedArtifact(1,0,0), AbstractD
 	 */
 	function createDataMapping(bytes32 _activityId, BpmModel.Direction _direction, bytes32 _accessPath, bytes32 _dataPath, bytes32 _dataStorageId, address _dataStorage) external pre_invalidate {
 		ErrorsLib.revertIf(!(graphElements.rows[_activityId].exists && graphElements.rows[_activityId].elementType == BpmModel.ModelElementType.ACTIVITY), 
-			ErrorsLib.RESOURCE_NOT_FOUND(), "DefaultProcessDefinition.createDataMapping", "Cannot create data mapping since given activityId is either non-existent or may belong to BpmModel.ModelElementType.GATEWAY");
+			ErrorsLib.RESOURCE_NOT_FOUND(), "DefaultProcessDefinition.createDataMapping", "Cannot create data mapping since given activityId is either non-existent or not of the correct type BpmModel.ModelElementType.ACTIVITY");
 		if (_direction == BpmModel.Direction.IN) {
 			if (!graphElements.rows[_activityId].activity.inMappings[_accessPath].exists) {
 				graphElements.rows[_activityId].activity.inMappingKeys.push(_accessPath);
@@ -672,10 +809,12 @@ contract DefaultProcessDefinition is AbstractVersionedArtifact(1,0,0), AbstractD
 	 * @param _id the ID of an activity
 	 * @return predecessor - the ID of its predecessor model element
 	 * @return successor - the ID of its successor model element
+	 * @return boundaryEventIds - the IDs of its boundary events, if any
 	 */
-	function getActivityGraphDetails(bytes32 _id) external view returns (bytes32 predecessor, bytes32 successor) {
+	function getActivityGraphDetails(bytes32 _id) external view returns (bytes32 predecessor, bytes32 successor, bytes32[] boundaryEventIds) {
 		predecessor = graphElements.rows[_id].activity.predecessor;
 		successor = graphElements.rows[_id].activity.successor;
+		boundaryEventIds = graphElements.rows[_id].activity.boundaryEventIds;
 	}
 
 	/**
@@ -691,6 +830,13 @@ contract DefaultProcessDefinition is AbstractVersionedArtifact(1,0,0), AbstractD
 		outputs = graphElements.rows[_id].gateway.outputs;
 		gatewayType = graphElements.rows[_id].gateway.gatewayType;
 		defaultOutput = graphElements.rows[_id].gateway.defaultOutput;
+	}
+
+	function getBoundaryEventGraphDetails(bytes32 _id) external view returns (bytes32 id, BpmModel.EventType eventType, BpmModel.BoundaryEventBehavior eventBehavior, bytes32 successor) {
+		id = graphElements.rows[_id].boundaryEvent.id;
+		eventType = graphElements.rows[_id].boundaryEvent.eventType;
+		eventBehavior = graphElements.rows[_id].boundaryEvent.eventBehavior;
+		successor = graphElements.rows[_id].boundaryEvent.successor;
 	}
 
 	/**
@@ -793,6 +939,17 @@ contract DefaultProcessDefinition is AbstractVersionedArtifact(1,0,0), AbstractD
 	 	if (startActivity.isEmpty())
 			return (false, "no start activity");
 
+		BpmModel.IntermediateEvent memory ie;
+	 	for (i=0; i<graphElements.intermediateEventIds.length; i++) {
+	 		ie = graphElements.rows[graphElements.intermediateEventIds[i]].intermediateEvent;
+	 		if (ie.predecessor.isEmpty()) {
+	 			return (false, "interm. event w/out predecessor");
+	 		}
+	 		if (ie.successor.isEmpty()) {
+	 			return (false, "interm. event w/out successor");
+	 		}
+	 	}
+
 		BpmModel.Gateway memory gw;
 	 	for (i=0; i<graphElements.gatewayIds.length; i++) {
 	 		gw = graphElements.rows[graphElements.gatewayIds[i]].gateway;
@@ -804,9 +961,6 @@ contract DefaultProcessDefinition is AbstractVersionedArtifact(1,0,0), AbstractD
 			}
 	 	}
 
-		// TODO need deeper evaluation: once a start activity is defined, traverse the graph and make sure all activities/gateways are reachable.
-		// this could be done in a walkGraph() function which takes 'visitor' function as parameter which can be used to validate
-	 	
 		valid = true;
 	 	return (true, "model valid");
 	 }

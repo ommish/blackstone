@@ -2,10 +2,6 @@ pragma solidity ^0.4.25;
 
 import "commons-base/ErrorsLib.sol";
 import "commons-base/BaseErrors.sol";
-import "commons-utils/TypeUtilsLib.sol";
-import "commons-utils/ArrayUtilsLib.sol";
-import "commons-collections/Mappings.sol";
-import "commons-collections/MappingsLib.sol";
 import "commons-standards/ERC165Utils.sol";
 import "commons-auth/Organization.sol";
 import "bpm-model/BpmModel.sol";
@@ -849,8 +845,10 @@ library BpmRuntimeLib {
      */
     function traverseRuntimeGraph(ProcessDefinition _processDefinition, bytes32 _currentId, BpmRuntime.ProcessGraph storage _graph) public {
         bytes32 targetId;
-        BpmModel.ModelElementType targetType;
+        bytes32[] memory elementIds;
+        uint256 i;
         BpmModel.ModelElementType currentType = _processDefinition.getElementType(_currentId);
+        BpmModel.ModelElementType targetType;
         // ACTIVITY
         if (currentType == BpmModel.ModelElementType.ACTIVITY) {
             if (_graph.activities[_currentId].exists) {
@@ -858,7 +856,36 @@ library BpmRuntimeLib {
             }
             // create a place for the current activity
             addActivity(_graph, _currentId);
-            ( , targetId) = _processDefinition.getActivityGraphDetails(_currentId);
+            ( , targetId, elementIds) = _processDefinition.getActivityGraphDetails(_currentId);
+            // process the activity's boundary events
+
+            //TODO need to implement mechanism to guarantee that the first output slot of an ActivityNode is always reserved for any next activities. Any transitions to paths resulting from events should be restricted to slots > 1
+
+            for (i=0; i<elementIds.length; i++) {
+                // if there is an activity path connected to the boundary event, we follow it
+                ( , , , bytes32 successor) = _processDefinition.getBoundaryEventGraphDetails(elementIds[i]);
+                if (successor != "") {
+                    targetType = _processDefinition.getElementType(successor);
+                    traverseRuntimeGraph(_processDefinition, successor, _graph);
+                    connect(_graph, _currentId, currentType, successor, targetType);
+                }
+            }
+            // process the activity successor, if there is one
+            if (targetId != "") {
+                targetType = _processDefinition.getElementType(targetId);
+                // continue recursion to the next element to ensure relevant nodes in the graph exist before adding the connections
+                traverseRuntimeGraph(_processDefinition, targetId, _graph);
+                connect(_graph, _currentId, currentType, targetId, targetType);
+            }
+        }
+        // INTERMEDIATE EVENT
+        if (currentType == BpmModel.ModelElementType.INTERMEDIATE_EVENT) {
+            if (_graph.activities[_currentId].exists) {
+                return; // if the element has already been added, end recursion
+            }
+            // create a place for the current event
+            addActivity(_graph, _currentId);
+            // process the successor, if there is one
             if (targetId != "") {
                 targetType = _processDefinition.getElementType(targetId);
                 // continue recursion to the next element to ensure relevant nodes in the graph exist before adding the connections
@@ -881,11 +908,11 @@ library BpmRuntimeLib {
                 transitionType = BpmRuntime.TransitionType.AND;
             // create the current transition element
             addTransition(_graph, _currentId, transitionType);
-            for (uint i=0; i<outputs.length; i++) {
+            for (i=0; i<outputs.length; i++) {
                 targetId = outputs[i];
+                targetType = _processDefinition.getElementType(targetId);
                 // continue recursion to the next element to ensure relevant nodes in the graph exist before adding the connections
                 traverseRuntimeGraph(_processDefinition, targetId, _graph);
-                targetType = _processDefinition.getElementType(targetId);
                 bytes32 newElementId = connect(_graph, _currentId, currentType, targetId, targetType);
                 // If the ProcessDefinition defines the target of the just made connection to be the default, it needs to be set in the graph
                 // For the graph, however, the target can be the original target (=activity) or a newly inserted place (newElementId), if the PD's target is another gateway.
@@ -986,7 +1013,6 @@ library BpmRuntimeLib {
      * @param _b the target node
      */
     function connect(BpmRuntime.Node storage _a, BpmRuntime.Node storage _b) private {
-        // TODO there is currently no protection from accidentally adding the same connection multiple times. We should implement .contains() checks or refactor the inputs/outputs to a mapping to prevent duplicate connections.
         _a.outputs.push(_b.id);
         _b.inputs.push(_a.id);
     }
