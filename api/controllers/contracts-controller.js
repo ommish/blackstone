@@ -1117,6 +1117,94 @@ const createTransitionCondition = (processAddress, dataType, gatewayId, activity
   });
 });
 
+const addBoundaryEvent = (pdAddress, {
+  attachedTo, id, eventType, eventBehavior, conditionalValue = {}, fixedValue = 0,
+}) => new Promise((resolve, reject) => {
+  log.info('REQUEST: Add boundary event with data: %s', JSON.stringify({
+    pdAddress,
+    attachedTo,
+    id,
+    eventType,
+    eventBehavior,
+    conditionalValue,
+    fixedValue,
+  }));
+  const processDefinition = getContract(process.env.API_ABI_DIRECTORY, BUNDLES.BPM_MODEL.contracts.PROCESS_DEFINITION, pdAddress);
+  processDefinition.addBoundaryEvent(
+    hexFromString(attachedTo),
+    hexFromString(id),
+    eventType,
+    eventBehavior,
+    hexFromString(conditionalValue.dataPath || ''),
+    hexFromString(conditionalValue.dataStorageId || ''),
+    conditionalValue.dataStorage || '',
+    fixedValue,
+    (error) => {
+      if (error) return reject(boomify(error, `Failed to add boundary event ${id} to process definition ${pdAddress}`));
+      log.info(`SUCCESS: Added boundary event ${id} to process definition ${pdAddress}`);
+      return resolve();
+    },
+  );
+});
+
+const addBoundaryEventAction = (pdAddress, {
+  id, escalationAction: {
+    dataPath, dataStorageId, dataStorage, fixedTarget, actionFunction,
+  },
+}) => new Promise((resolve, reject) => {
+  log.debug('REQUEST: Add boundary event action with data: %s', JSON.stringify({
+    pdAddress,
+    id,
+    dataPath,
+    dataStorageId,
+    dataStorage,
+    fixedTarget,
+    actionFunction,
+  }));
+  const processDefinition = getContract(process.env.API_ABI_DIRECTORY, BUNDLES.BPM_MODEL.contracts.PROCESS_DEFINITION, pdAddress);
+  processDefinition.addBoundaryEventAction(
+    hexFromString(id),
+    hexFromString(dataPath),
+    hexFromString(dataStorageId),
+    dataStorage || '',
+    fixedTarget || '',
+    actionFunction,
+    (error) => {
+      if (error) return reject(boomify(error, `Failed to add boundary event action for event ${id} to process definition ${pdAddress}`));
+      log.info(`SUCCESS: Added boundary event action for event ${id} to process definition ${pdAddress}`);
+      return resolve();
+    },
+  );
+});
+
+const createIntermediateEvent = (pdAddress, {
+  id, eventType, eventBehavior, conditionalValue = {}, fixedValue = 0,
+}) => new Promise((resolve, reject) => {
+  log.debug('REQUEST: Add intermediate catch event with data: %s', JSON.stringify({
+    pdAddress,
+    id,
+    eventType,
+    eventBehavior,
+    conditionalValue,
+    fixedValue,
+  }));
+  const processDefinition = getContract(process.env.API_ABI_DIRECTORY, BUNDLES.BPM_MODEL.contracts.PROCESS_DEFINITION, pdAddress);
+  processDefinition.createIntermediateEvent(
+    hexFromString(id),
+    eventType,
+    eventBehavior,
+    hexFromString(conditionalValue.dataPath || ''),
+    hexFromString(conditionalValue.dataStorageId || ''),
+    conditionalValue.dataStorage || '',
+    fixedValue,
+    (error) => {
+      if (error) return reject(boomify(error, `Failed to add intermediate catch event ${id} to process definition ${pdAddress}`));
+      log.info(`SUCCESS: Added intermediate catch event ${id} to process definition ${pdAddress}`);
+      return resolve();
+    },
+  );
+});
+
 const signAgreement = (actingUserAddress, agreementAddress) => new Promise(async (resolve, reject) => {
   log.debug('REQUEST: Sign agreement %s by user %s', agreementAddress, actingUserAddress);
   try {
@@ -1484,6 +1572,9 @@ module.exports = {
   createTransition,
   setDefaultTransition,
   createTransitionCondition,
+  addBoundaryEvent,
+  addBoundaryEventAction,
+  createIntermediateEvent,
   completeActivity,
   signAgreement,
   getModelAddressFromId,
