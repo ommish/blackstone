@@ -1149,7 +1149,7 @@ const addBoundaryEvent = (pdAddress, {
 
 const addBoundaryEventAction = (pdAddress, {
   id, escalationAction: {
-    dataPath, dataStorageId, dataStorage, fixedTarget, actionFunction,
+    dataPath, dataStorageId = '', dataStorage = '', fixedTarget = '', targetFunction,
   },
 }) => new Promise((resolve, reject) => {
   log.debug('REQUEST: Add boundary event action with data: %s', JSON.stringify({
@@ -1159,16 +1159,16 @@ const addBoundaryEventAction = (pdAddress, {
     dataStorageId,
     dataStorage,
     fixedTarget,
-    actionFunction,
+    targetFunction,
   }));
   const processDefinition = getContract(process.env.API_ABI_DIRECTORY, BUNDLES.BPM_MODEL.contracts.PROCESS_DEFINITION, pdAddress);
   processDefinition.addBoundaryEventAction(
     hexFromString(id),
     hexFromString(dataPath),
     hexFromString(dataStorageId),
-    dataStorage || '',
-    fixedTarget || '',
-    actionFunction,
+    dataStorage,
+    fixedTarget,
+    targetFunction,
     (error) => {
       if (error) return reject(boomify(error, `Failed to add boundary event action for event ${id} to process definition ${pdAddress}`));
       log.info(`SUCCESS: Added boundary event action for event ${id} to process definition ${pdAddress}`);
