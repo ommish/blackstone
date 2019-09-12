@@ -111,6 +111,11 @@ const AGREEMENT_ATTACHMENT_CONTENT_TYPES = {
   plaintext: 'plaintext',
 };
 
+const BPM_TIMER_EVENT_TYPES = {
+  timeDate: 0,
+  timeDuration: 1,
+};
+
 module.exports = {
   BUNDLES,
   PARAMETER_TYPES,
@@ -123,4 +128,5 @@ module.exports = {
   DEFAULT_DEPARTMENT_ID,
   NOTIFICATION,
   AGREEMENT_ATTACHMENT_CONTENT_TYPES,
+  BPM_TIMER_EVENT_TYPES,
 };

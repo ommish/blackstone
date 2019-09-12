@@ -4,7 +4,7 @@ const BpmnModdle = esmRequire('bpmn-moddle').default;
 const moddle = new BpmnModdle();
 const boom = esmRequire('@hapi/boom');
 const moment = require('moment');
-const { COMPARISON_OPERATOR, PARAM_TYPE_TO_DATA_TYPE_MAP } = require('../common/constants');
+const { COMPARISON_OPERATOR, PARAM_TYPE_TO_DATA_TYPE_MAP, BPM_TIMER_EVENT_TYPES } = require('../common/constants');
 
 const BPMN_ROOT_ELEMENTS = 'rootElements';
 const BPMN_DEFINITION = 'bpmn:Definitions';
@@ -71,11 +71,6 @@ const BPM_MODEL_DATA_STORE_IDS = {
 const BPM_TIMER_TYPES = {
   DATE: 'timeDate',
   DURATION: 'timeDuration',
-};
-
-const BPM_TIMER_EVENT_TYPES = {
-  timeDate: 0,
-  timeDuration: 1,
 };
 
 const BPM_TIMER_ESCALATION_ACTION = 'ESCALATION_ACTION';
