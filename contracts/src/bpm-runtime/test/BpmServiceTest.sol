@@ -54,6 +54,9 @@ contract BpmServiceTest {
 	bytes32 transitionId2 = "transition2";
 	bytes32 transitionId3 = "transition3";
 	bytes32 transitionId4 = "transition4";
+	bytes32 eventId1 = "event1";
+	bytes32 marker1 = "marker1";
+	bytes32 marker2 = "marker2";
 
 	address assignee1 = 0x1040e6521541daB4E7ee57F21226dD17Ce9F0Fb7;
 	address assignee2 = 0x58fd1799aa32deD3F6eac096A1dC77834a446b9C;
@@ -151,8 +154,8 @@ contract BpmServiceTest {
 		graph.addActivity(activityId3);
 	
 		// add connections
-		graph.connect(activityId1, BpmModel.ModelElementType.ACTIVITY, activityId2, BpmModel.ModelElementType.ACTIVITY);
-		graph.connect(activityId2, BpmModel.ModelElementType.ACTIVITY, activityId3, BpmModel.ModelElementType.ACTIVITY);
+		graph.connect(activityId1, BpmModel.ModelElementType.ACTIVITY, activityId2, BpmModel.ModelElementType.ACTIVITY, "");
+		graph.connect(activityId2, BpmModel.ModelElementType.ACTIVITY, activityId3, BpmModel.ModelElementType.ACTIVITY, "");
 
 		// Test graph connectivity
 		if (graph.activityKeys.length != 3) return "There should be 3 activities in the graph";
@@ -199,6 +202,88 @@ contract BpmServiceTest {
 	}
 
 	/**
+	 * @dev Tests a process graph consisting of sequential activities.
+	 */
+	function testProcessGraphColoredPaths() external returns (string) {
+
+		//              coloredPath -> activity3
+		//             /  
+		// Graph: activity1 -> activity2
+		//                          \
+		//                           coloredPath -> activity4
+		graph.clear();
+
+		// add places
+		graph.addActivity(activityId1);
+		graph.addActivity(activityId2);
+		graph.addActivity(activityId3);
+		graph.addActivity(activityId4);
+	
+		// add connections
+		graph.connect(activityId1, BpmModel.ModelElementType.ACTIVITY, activityId2, BpmModel.ModelElementType.ACTIVITY, EMPTY);
+		bytes32 coloredTransition1Id = graph.connect(activityId1, BpmModel.ModelElementType.ACTIVITY, activityId3, BpmModel.ModelElementType.ACTIVITY, marker1);
+		bytes32 coloredTransition2Id = graph.connect(activityId2, BpmModel.ModelElementType.ACTIVITY, activityId4, BpmModel.ModelElementType.ACTIVITY, marker2);
+
+		// Test graph connectivity
+		if (graph.activityKeys.length != 4) return "There should be 4 activities in the graph";
+		if (graph.transitionKeys.length != 3) return "There should be 3 transitions in the graph";
+
+		if (graph.activities[activityId1].node.inputs.length != 0) return "activity1 should have 0 in arcs";
+		if (graph.activities[activityId1].node.outputs.length != 2) return "activity1 should have 2 out arcs with index 1 being colored";
+		if (graph.transitions[graph.transitionKeys[0]].node.inputs.length != 1) return "transition1 should have 1 in arcs";
+		if (graph.transitions[graph.transitionKeys[0]].node.outputs.length != 1) return "transition1 should have 1 out arcs";
+		if (graph.activities[activityId2].node.inputs.length != 1) return "activity2 should have 1 in arcs";
+		if (graph.activities[activityId2].node.outputs.length != 1) return "activity2 should have 1 out arc for the colored transition";
+		if (graph.transitions[graph.transitionKeys[1]].node.inputs.length != 1) return "transition2 should have 1 in arcs";
+		if (graph.transitions[graph.transitionKeys[1]].node.outputs.length != 1) return "transition2 should have 1 out arcs";
+		if (graph.activities[activityId3].node.inputs.length != 1) return "activity3 should have 1 in arcs";
+		if (graph.activities[activityId3].node.outputs.length != 0) return "activity3 should have 0 out arcs";
+		if (graph.transitions[graph.transitionKeys[2]].node.inputs.length != 1) return "transition3 should have 1 in arcs";
+		if (graph.transitions[graph.transitionKeys[2]].node.outputs.length != 1) return "transition3 should have 1 out arcs";
+		if (graph.activities[activityId4].node.inputs.length != 1) return "activity4 should have 1 in arcs";
+		if (graph.activities[activityId4].node.outputs.length != 0) return "activity4 should have 0 out arcs";
+		// check correct colored indexing
+		if (graph.activities[activityId1].node.outputs[0] != graph.activities[activityId2].node.inputs[0]) return "ouputs[0] of activity1 should be the transition to activity2";
+		if (graph.activities[activityId1].node.outputs[1] != graph.activities[activityId3].node.inputs[0]) return "ouputs[1] of activity1 should be the transition to activity3";
+		if (graph.activities[activityId2].node.outputs[0] != graph.activities[activityId4].node.inputs[0]) return "ouputs[0] of activity2 should be the transition to activity4";
+		if (graph.transitions[coloredTransition1Id].marker != marker1) return "ColoredTransition1 should have marker1";
+		if (graph.transitions[coloredTransition2Id].marker != marker2) return "ColoredTransition2 should have marker2";
+
+		// on the first activity, the done marker as well as the colored path are activited
+		graph.activities[activityId1].done = true;
+		// test helper functions
+		if (graph.isTransitionEnabled(graph.transitionKeys[0]) != true) return "Transition1 should be enabled";
+		if (graph.isTransitionEnabled(coloredTransition1Id) != false) return "ColoredTransition1 should not be enabled";
+		if (graph.isTransitionEnabled(coloredTransition2Id) != false) return "ColoredTransition2 should not be enabled";
+		graph.activities[activityId1].markers[marker1] = true;
+		if (graph.isTransitionEnabled(coloredTransition1Id) != true) return "ColoredTransition1 should now be enabled after marker was set";
+
+		// Test token movement
+	  	if (graph.activities[activityId1].done != true) return "State1: activity1 should have 1 completion markers";
+		if (graph.activities[activityId2].done != false) return "State1: activity2 should have 0 completion markers";
+		if (graph.activities[activityId3].done != false) return "State1: activity3 should have 0 completion markers";
+		if (graph.activities[activityId4].done != false) return "State1: activity3 should have 0 completion markers";
+
+		graph.execute();
+
+		if (graph.activities[activityId1].done != false) return "State2: activity1 should have 0 completion markers";
+	  	if (graph.activities[activityId1].markers[marker1] != false) return "State1: activity1 should have no colored marker1 after transition fired";
+		if (graph.activities[activityId2].ready != true) return "State2: activity2 should have 1 activation markers";
+		if (graph.activities[activityId3].ready != true) return "State2: activity3 should have 1 activation markers";
+		if (graph.activities[activityId4].ready != false) return "State2: activity4 should have 0 activation markers";
+
+		graph.activities[activityId2].markers[marker2] = true;
+		if (graph.isTransitionEnabled(coloredTransition2Id) != true) return "Transition3 should be enabled now after marker was set";
+
+		graph.execute();
+
+	  	if (graph.activities[activityId2].markers[marker2] != false) return "State4: activity2 should have no colored marker2 after transition fired";
+		if (graph.activities[activityId4].ready != true) return "State3: activity4 should have 1 activation markers";
+
+		return SUCCESS;
+	}
+
+	/**
 	 * @dev Tests a process graph containing AND split and join transitions
 	 */
 	function testProcessGraphParallelGateway() external returns (string) {
@@ -220,12 +305,12 @@ contract BpmServiceTest {
 		graph.addTransition(transitionId2, BpmRuntime.TransitionType.AND);
 	
 		// add connections
-		graph.connect(activityId1, BpmModel.ModelElementType.ACTIVITY, transitionId1, BpmModel.ModelElementType.GATEWAY);
-		graph.connect(transitionId1, BpmModel.ModelElementType.GATEWAY, activityId2, BpmModel.ModelElementType.ACTIVITY);
-		graph.connect(transitionId1, BpmModel.ModelElementType.GATEWAY, activityId3, BpmModel.ModelElementType.ACTIVITY);
-		graph.connect(activityId2, BpmModel.ModelElementType.ACTIVITY, transitionId2, BpmModel.ModelElementType.GATEWAY);
-		graph.connect(activityId3, BpmModel.ModelElementType.ACTIVITY, transitionId2, BpmModel.ModelElementType.GATEWAY);
-		graph.connect(transitionId2, BpmModel.ModelElementType.GATEWAY, activityId4, BpmModel.ModelElementType.ACTIVITY);
+		graph.connect(activityId1, BpmModel.ModelElementType.ACTIVITY, transitionId1, BpmModel.ModelElementType.GATEWAY, "");
+		graph.connect(transitionId1, BpmModel.ModelElementType.GATEWAY, activityId2, BpmModel.ModelElementType.ACTIVITY, "");
+		graph.connect(transitionId1, BpmModel.ModelElementType.GATEWAY, activityId3, BpmModel.ModelElementType.ACTIVITY, "");
+		graph.connect(activityId2, BpmModel.ModelElementType.ACTIVITY, transitionId2, BpmModel.ModelElementType.GATEWAY, "");
+		graph.connect(activityId3, BpmModel.ModelElementType.ACTIVITY, transitionId2, BpmModel.ModelElementType.GATEWAY, "");
+		graph.connect(transitionId2, BpmModel.ModelElementType.GATEWAY, activityId4, BpmModel.ModelElementType.ACTIVITY, "");
 
 		// Test graph connectivity
 		if (graph.activityKeys.length != 4) return "There should be 4 activities in the graph";
@@ -296,14 +381,14 @@ contract BpmServiceTest {
 		graph.addTransition(transitionId2, BpmRuntime.TransitionType.XOR);
 	
 		// add connections
-		graph.connect(activityId1, BpmModel.ModelElementType.ACTIVITY, transitionId1, BpmModel.ModelElementType.GATEWAY);
-		graph.connect(transitionId1, BpmModel.ModelElementType.GATEWAY, activityId2, BpmModel.ModelElementType.ACTIVITY);
-		graph.connect(transitionId1, BpmModel.ModelElementType.GATEWAY, activityId3, BpmModel.ModelElementType.ACTIVITY);
-		graph.connect(transitionId1, BpmModel.ModelElementType.GATEWAY, activityId4, BpmModel.ModelElementType.ACTIVITY);
-		graph.connect(activityId2, BpmModel.ModelElementType.ACTIVITY, transitionId2, BpmModel.ModelElementType.GATEWAY);
-		graph.connect(activityId3, BpmModel.ModelElementType.ACTIVITY, transitionId2, BpmModel.ModelElementType.GATEWAY);
-		graph.connect(activityId4, BpmModel.ModelElementType.ACTIVITY, transitionId2, BpmModel.ModelElementType.GATEWAY);
-		graph.connect(transitionId2, BpmModel.ModelElementType.GATEWAY, activityId5, BpmModel.ModelElementType.ACTIVITY);
+		graph.connect(activityId1, BpmModel.ModelElementType.ACTIVITY, transitionId1, BpmModel.ModelElementType.GATEWAY, "");
+		graph.connect(transitionId1, BpmModel.ModelElementType.GATEWAY, activityId2, BpmModel.ModelElementType.ACTIVITY, "");
+		graph.connect(transitionId1, BpmModel.ModelElementType.GATEWAY, activityId3, BpmModel.ModelElementType.ACTIVITY, "");
+		graph.connect(transitionId1, BpmModel.ModelElementType.GATEWAY, activityId4, BpmModel.ModelElementType.ACTIVITY, "");
+		graph.connect(activityId2, BpmModel.ModelElementType.ACTIVITY, transitionId2, BpmModel.ModelElementType.GATEWAY, "");
+		graph.connect(activityId3, BpmModel.ModelElementType.ACTIVITY, transitionId2, BpmModel.ModelElementType.GATEWAY, "");
+		graph.connect(activityId4, BpmModel.ModelElementType.ACTIVITY, transitionId2, BpmModel.ModelElementType.GATEWAY, "");
+		graph.connect(transitionId2, BpmModel.ModelElementType.GATEWAY, activityId5, BpmModel.ModelElementType.ACTIVITY, "");
 
 		// Test graph connectivity
 		if (graph.activityKeys.length != 5) return "There should be 4 activities in the graph";
@@ -381,9 +466,9 @@ contract BpmServiceTest {
 		graph.addTransition(transitionId1, BpmRuntime.TransitionType.XOR);
 	
 		// add connections
-		graph.connect(activityId1, BpmModel.ModelElementType.ACTIVITY, transitionId1, BpmModel.ModelElementType.GATEWAY);
-		graph.connect(transitionId1, BpmModel.ModelElementType.GATEWAY, activityId2, BpmModel.ModelElementType.ACTIVITY);
-		graph.connect(transitionId1, BpmModel.ModelElementType.GATEWAY, activityId3, BpmModel.ModelElementType.ACTIVITY);
+		graph.connect(activityId1, BpmModel.ModelElementType.ACTIVITY, transitionId1, BpmModel.ModelElementType.GATEWAY, "");
+		graph.connect(transitionId1, BpmModel.ModelElementType.GATEWAY, activityId2, BpmModel.ModelElementType.ACTIVITY, "");
+		graph.connect(transitionId1, BpmModel.ModelElementType.GATEWAY, activityId3, BpmModel.ModelElementType.ACTIVITY, "");
 
 		// add TransitionConditionResolver with all transitions false
 		TestConditionResolver resolver = new TestConditionResolver();
@@ -436,18 +521,18 @@ contract BpmServiceTest {
 		graph.addTransition(transitionId4, BpmRuntime.TransitionType.AND);
 	
 		// add connections
-		graph.connect(activityId1, BpmModel.ModelElementType.ACTIVITY, transitionId1, BpmModel.ModelElementType.GATEWAY);
-		graph.connect(transitionId1, BpmModel.ModelElementType.GATEWAY, activityId2, BpmModel.ModelElementType.ACTIVITY);
-		graph.connect(transitionId1, BpmModel.ModelElementType.GATEWAY, transitionId2, BpmModel.ModelElementType.GATEWAY);
+		graph.connect(activityId1, BpmModel.ModelElementType.ACTIVITY, transitionId1, BpmModel.ModelElementType.GATEWAY, "");
+		graph.connect(transitionId1, BpmModel.ModelElementType.GATEWAY, activityId2, BpmModel.ModelElementType.ACTIVITY, "");
+		graph.connect(transitionId1, BpmModel.ModelElementType.GATEWAY, transitionId2, BpmModel.ModelElementType.GATEWAY, "");
 		bytes32 hiddenPlace1Id = graph.activityKeys[graph.activityKeys.length-1]; // an artificial activity was added between the two transitions. Save ID for later
-		graph.connect(transitionId2, BpmModel.ModelElementType.GATEWAY, activityId3, BpmModel.ModelElementType.ACTIVITY);
-		graph.connect(transitionId2, BpmModel.ModelElementType.GATEWAY, activityId4, BpmModel.ModelElementType.ACTIVITY);
-		graph.connect(activityId3, BpmModel.ModelElementType.ACTIVITY, transitionId3, BpmModel.ModelElementType.GATEWAY);
-		graph.connect(activityId4, BpmModel.ModelElementType.ACTIVITY, transitionId3, BpmModel.ModelElementType.GATEWAY);
-		graph.connect(activityId2, BpmModel.ModelElementType.ACTIVITY, transitionId4, BpmModel.ModelElementType.GATEWAY);
-		graph.connect(transitionId3, BpmModel.ModelElementType.GATEWAY, transitionId4, BpmModel.ModelElementType.GATEWAY);
+		graph.connect(transitionId2, BpmModel.ModelElementType.GATEWAY, activityId3, BpmModel.ModelElementType.ACTIVITY, "");
+		graph.connect(transitionId2, BpmModel.ModelElementType.GATEWAY, activityId4, BpmModel.ModelElementType.ACTIVITY, "");
+		graph.connect(activityId3, BpmModel.ModelElementType.ACTIVITY, transitionId3, BpmModel.ModelElementType.GATEWAY, "");
+		graph.connect(activityId4, BpmModel.ModelElementType.ACTIVITY, transitionId3, BpmModel.ModelElementType.GATEWAY, "");
+		graph.connect(activityId2, BpmModel.ModelElementType.ACTIVITY, transitionId4, BpmModel.ModelElementType.GATEWAY, "");
+		graph.connect(transitionId3, BpmModel.ModelElementType.GATEWAY, transitionId4, BpmModel.ModelElementType.GATEWAY, "");
 		bytes32 hiddenPlace2Id = graph.activityKeys[graph.activityKeys.length-1];  // an artificial activity was added between the two transitions. Save ID for later
-		graph.connect(transitionId4, BpmModel.ModelElementType.GATEWAY, activityId5, BpmModel.ModelElementType.ACTIVITY);
+		graph.connect(transitionId4, BpmModel.ModelElementType.GATEWAY, activityId5, BpmModel.ModelElementType.ACTIVITY, "");
 
 		// Test graph connectivity
 		if (graph.activityKeys.length != 7) return "There should be 7 activities in the graph, including two artificial places to connect the gateways";
@@ -548,13 +633,13 @@ contract BpmServiceTest {
 		graph.addTransition(transitionId2, BpmRuntime.TransitionType.XOR);
 	
 		// add connections
-		graph.connect(activityId1, BpmModel.ModelElementType.ACTIVITY, transitionId1, BpmModel.ModelElementType.GATEWAY);
-		graph.connect(transitionId1, BpmModel.ModelElementType.GATEWAY, activityId2, BpmModel.ModelElementType.ACTIVITY);
-		graph.connect(activityId2, BpmModel.ModelElementType.ACTIVITY, activityId3, BpmModel.ModelElementType.ACTIVITY);
-		graph.connect(activityId3, BpmModel.ModelElementType.ACTIVITY, transitionId2, BpmModel.ModelElementType.GATEWAY);
-		graph.connect(transitionId2, BpmModel.ModelElementType.GATEWAY, activityId5, BpmModel.ModelElementType.ACTIVITY);
-		graph.connect(transitionId2, BpmModel.ModelElementType.GATEWAY, activityId4, BpmModel.ModelElementType.ACTIVITY);
-		graph.connect(activityId4, BpmModel.ModelElementType.ACTIVITY, transitionId1, BpmModel.ModelElementType.GATEWAY);
+		graph.connect(activityId1, BpmModel.ModelElementType.ACTIVITY, transitionId1, BpmModel.ModelElementType.GATEWAY, "");
+		graph.connect(transitionId1, BpmModel.ModelElementType.GATEWAY, activityId2, BpmModel.ModelElementType.ACTIVITY, "");
+		graph.connect(activityId2, BpmModel.ModelElementType.ACTIVITY, activityId3, BpmModel.ModelElementType.ACTIVITY, "");
+		graph.connect(activityId3, BpmModel.ModelElementType.ACTIVITY, transitionId2, BpmModel.ModelElementType.GATEWAY, "");
+		graph.connect(transitionId2, BpmModel.ModelElementType.GATEWAY, activityId5, BpmModel.ModelElementType.ACTIVITY, "");
+		graph.connect(transitionId2, BpmModel.ModelElementType.GATEWAY, activityId4, BpmModel.ModelElementType.ACTIVITY, "");
+		graph.connect(activityId4, BpmModel.ModelElementType.ACTIVITY, transitionId1, BpmModel.ModelElementType.GATEWAY, "");
 
 		// Test graph connectivity
 		if (graph.activityKeys.length != 5) return "There should be 5 activities in the graph";
@@ -622,12 +707,14 @@ contract BpmServiceTest {
 	}
 
 	/**
-	 * @dev Tests the creation and configuration of a process instance from a process definition, specifically the tranlation into a BpmRuntime.ProcessGraph
+	 * @dev Tests the creation and configuration of a process instance from a process definition,
+	 * specifically the conversion into a BpmRuntime.ProcessGraph. The test covers regular activities, intermediate events,
+	 * and XOR gateways.
 	 */
 	function testProcessGraphCreation() external returns (string) {
 
 		//                                              /--> activity3 -------------\
-		// Graph: activity1 -> activity2 -> XOR SPLIT --                             --> XOR JOIN -> activity6
+		// Graph: activity1 -> event1 -> XOR SPLIT --                             --> XOR JOIN -> activity6
 		//                                              \-> activity4 -> activity5 -/
 
 		bytes32 bytes32Value;
@@ -640,15 +727,15 @@ contract BpmServiceTest {
 		ProcessDefinition pd = ProcessDefinition(addr);
 
 		pd.createActivityDefinition(activityId1, BpmModel.ActivityType.TASK, BpmModel.TaskType.NONE, BpmModel.TaskBehavior.SEND, EMPTY, false, EMPTY, EMPTY, EMPTY);
-		pd.createActivityDefinition(activityId2, BpmModel.ActivityType.TASK, BpmModel.TaskType.NONE, BpmModel.TaskBehavior.SEND, EMPTY, false, EMPTY, EMPTY, EMPTY);
+		pd.createIntermediateEvent(eventId1, BpmModel.EventType.TIMER_DURATION, BpmModel.IntermediateEventBehavior.CATCHING, EMPTY, EMPTY, address(0), 30, EMPTY_STRING); // 30 sec wait event
 		pd.createActivityDefinition(activityId3, BpmModel.ActivityType.TASK, BpmModel.TaskType.NONE, BpmModel.TaskBehavior.SEND, EMPTY, false, EMPTY, EMPTY, EMPTY);
 		pd.createActivityDefinition(activityId4, BpmModel.ActivityType.TASK, BpmModel.TaskType.NONE, BpmModel.TaskBehavior.SEND, EMPTY, false, EMPTY, EMPTY, EMPTY);
 		pd.createActivityDefinition(activityId5, BpmModel.ActivityType.TASK, BpmModel.TaskType.NONE, BpmModel.TaskBehavior.SEND, EMPTY, false, EMPTY, EMPTY, EMPTY);
 		pd.createActivityDefinition(activityId6, BpmModel.ActivityType.TASK, BpmModel.TaskType.NONE, BpmModel.TaskBehavior.SEND, EMPTY, false, EMPTY, EMPTY, EMPTY);
 		pd.createGateway(transitionId1, BpmModel.GatewayType.XOR);
 		pd.createGateway(transitionId2, BpmModel.GatewayType.XOR);
-		pd.createTransition(activityId1, activityId2);
-		pd.createTransition(activityId2, transitionId1);
+		pd.createTransition(activityId1, eventId1);
+		pd.createTransition(eventId1, transitionId1);
 		pd.createTransition(transitionId1, activityId3);
 		pd.createTransition(transitionId1, activityId4);
 		pd.createTransition(activityId4, activityId5);
@@ -670,7 +757,7 @@ contract BpmServiceTest {
 		if (graph.activityKeys.length != 6) return "There should be 6 activities in the ProcessGraph";
 		if (graph.transitionKeys.length != 4) return "There should be 4 transitions in the ProcessGraph";
 		if (!graph.activities[activityId1].exists) return "Activity1 not found in graph.";
-		if (!graph.activities[activityId2].exists) return "Activity2 not found in graph.";
+		if (!graph.activities[eventId1].exists) return "Event1 not found in graph.";
 		if (!graph.activities[activityId3].exists) return "Activity3 not found in graph.";
 		if (!graph.activities[activityId4].exists) return "Activity4 not found in graph.";
 		if (!graph.activities[activityId5].exists) return "Activity5 not found in graph.";
@@ -682,8 +769,8 @@ contract BpmServiceTest {
 
 		if (graph.activities[activityId1].node.inputs.length != 0) return "Activity1 should have no inputs.";
 		if (graph.activities[activityId1].node.outputs.length != 1) return "Activity1 should have 1 outputs.";
-		if (graph.activities[activityId2].node.inputs.length != 1) return "Activity2 should have 1 inputs.";
-		if (graph.activities[activityId2].node.outputs.length != 1) return "Activity2 should have 1 outputs.";
+		if (graph.activities[eventId1].node.inputs.length != 1) return "Event1 should have 1 inputs.";
+		if (graph.activities[eventId1].node.outputs.length != 1) return "Event1 should have 1 outputs.";
 		if (graph.transitions[transitionId1].node.inputs.length != 1) return "Transition1 should have 1 inputs.";
 		if (graph.transitions[transitionId1].node.outputs.length != 2) return "Transition1 should have 2 outputs.";
 		if (graph.activities[activityId3].node.inputs.length != 1) return "Activity3 should have 1 inputs.";
@@ -697,9 +784,9 @@ contract BpmServiceTest {
 		if (graph.activities[activityId6].node.inputs.length != 1) return "Activity6 should have 1 inputs.";
 		if (graph.activities[activityId6].node.outputs.length != 0) return "Activity6 should have no outputs.";
 
-		if (graph.activities[activityId1].node.outputs[0] != graph.activities[activityId2].node.inputs[0]) return "Activity1 and Activity2 should share the same transition";
-		if (graph.activities[activityId2].node.outputs[0] != graph.activities[activityId3].node.inputs[0]) return "Activity2 and Activity3 should share the same transition";
-		if (graph.activities[activityId2].node.outputs[0] != graph.activities[activityId4].node.inputs[0]) return "Activity2 and Activity4 should share the same transition";
+		if (graph.activities[activityId1].node.outputs[0] != graph.activities[eventId1].node.inputs[0]) return "Activity1 and Event1 should share the same transition";
+		if (graph.activities[eventId1].node.outputs[0] != graph.activities[activityId3].node.inputs[0]) return "Event1 and Activity3 should share the same transition";
+		if (graph.activities[eventId1].node.outputs[0] != graph.activities[activityId4].node.inputs[0]) return "Event1 and Activity4 should share the same transition";
 		if (graph.activities[activityId4].node.outputs[0] != graph.activities[activityId5].node.inputs[0]) return "Activity4 and Activity5 should share the same transition";
 		if (graph.activities[activityId5].node.outputs[0] != graph.activities[activityId6].node.inputs[0]) return "Activity5 and Activity6 should share the same transition";
 		if (graph.activities[activityId3].node.outputs[0] != graph.activities[activityId6].node.inputs[0]) return "Activity3 and Activity6 should share the same transition";

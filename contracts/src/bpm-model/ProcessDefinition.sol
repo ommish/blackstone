@@ -90,6 +90,45 @@ contract ProcessDefinition is VersionedArtifact, Bytes32Identifiable {
 	function createGateway(bytes32 _id, BpmModel.GatewayType _type) external;
 
 	/**
+	 * Creates a new intermediate event definition with the specified parameters and conditional (DataStorage-based) data.
+	 * @param _id the ID under which to register the element
+	 * @param _eventType a BpmModel.EventType
+	 * @param _eventBehavior a BpmModel.IntermediateEventBehavior
+	 * @param _dataPath a data path (key) to use for data lookup on a DataStorage.
+	 * @param _dataStorageId an optional key to identify a DataStorage as basis for the data path other than the default one
+	 * @param _dataStorage an optional address of a DataStorage as basis for the data path other than the default one
+	 * @param _timestampConstant a fixed value for timer-based events representing a UNIX timestamp in secs
+	 * @param _durationConstant a fixed value for timer-based events representing a duration in secs
+	 */
+	function createIntermediateEvent(bytes32 _id, BpmModel.EventType _eventType, BpmModel.IntermediateEventBehavior _eventBehavior, bytes32 _dataPath, bytes32 _dataStorageId, address _dataStorage, uint256 _timestampConstant, string _durationConstant) external;
+
+	/**
+	 * @dev Addes a boundary event to the specified activity using the provided ID, parameters, conditional (DataStorage-based)
+	 * data or constant uint value. If a constant value is provided, the conditional data will be ignored! 
+	 * @param _activityId the activity for which the boundary event is added
+	 * @param _id the ID under which to register the element
+	 * @param _eventType a BpmModel.EventType.
+	 * @param _eventBehavior a BpmModel.IntermediateEventBehavior
+	 * @param _dataPath a data path (key) to use for data lookup on a DataStorage.
+	 * @param _dataStorageId an optional key to identify a DataStorage as basis for the data path other than the default one
+	 * @param _dataStorage an optional address of a DataStorage as basis for the data path other than the default one
+	 * @param _timestampConstant a fixed value for timer based events representing either a datetime or a duration in secs
+	 * @param _durationConstant a fixed value for timer-based events representing a duration in secs
+	 */
+	function addBoundaryEvent(bytes32 _activityId, bytes32 _id, BpmModel.EventType _eventType, BpmModel.BoundaryEventBehavior _eventBehavior, bytes32 _dataPath, bytes32 _dataStorageId, address _dataStorage, uint256 _timestampConstant, string _durationConstant) external;
+
+	/**
+	 * @dev Adds an event action to a given boundary event.
+	 * @param _id the boundary event ID
+	 * @param _dataPath a data path (key) to use for data lookup on a DataStorage to find the escalation target
+	 * @param _dataStorageId an optional key to identify a DataStorage as basis for the data path to find the escalation target
+	 * @param _dataStorage an optional address of a DataStorage as basis for the data path to find the escalation target
+	 * @param _fixedTarget a fixed address for the escalation target
+	 * @param _actionFunction a function signature to be invoked on the escalation target
+	 */
+	function addBoundaryEventAction(bytes32 _id, bytes32 _dataPath, bytes32 _dataStorageId, address _dataStorage, address _fixedTarget, string _actionFunction) external;
+
+	/**
 	 * @dev Creates a transition between the specified source and target elements.
 	 * @param _source the start of the transition
 	 * @param _target the end of the transition
@@ -335,8 +374,9 @@ contract ProcessDefinition is VersionedArtifact, Bytes32Identifiable {
 	 * @param _id the ID of an activity
 	 * @return predecessor - the ID of its predecessor model element
 	 * @return successor - the ID of its successor model element
+	 * @return boundaryEventIds - the IDs of its boundary events, if any
 	 */
-	function getActivityGraphDetails(bytes32 _id) external view returns (bytes32 predecessor, bytes32 successor);
+	function getActivityGraphDetails(bytes32 _id) external view returns (bytes32 predecessor, bytes32 successor, bytes32[] boundaryEventIds);
 
 	/**
 	 * @dev Returns connectivity details about the specified gateway.
@@ -347,6 +387,25 @@ contract ProcessDefinition is VersionedArtifact, Bytes32Identifiable {
 	 * @return defaultOutput - the default output connection (applies only to XOR|OR type gateways)
 	 */
 	function getGatewayGraphDetails(bytes32 _id) external view returns (bytes32[] inputs, bytes32[] outputs, BpmModel.GatewayType gatewayType, bytes32 defaultOutput);
+
+	/**
+	 * @dev Returns connectivity details about the specified intermediate event
+	 * @param _id the ID of the intermediate event
+	 * @return eventType - the BpmModel.EventType of the event
+	 * @return eventBehavior - the BpmModel.IntermediateEventBehavior of the event
+	 * @return predecessor - the ID of the prodecessor element 
+	 * @return successor - the ID of the successor element, if there is one
+	 */
+	function getIntermediateEventGraphDetails(bytes32 _id) external view returns (BpmModel.EventType eventType, BpmModel.IntermediateEventBehavior eventBehavior, bytes32 predecessor, bytes32 successor);
+
+	/**
+	 * @dev Returns connectivity details about the specified boundary event
+	 * @param _id the ID of the boundary event
+	 * @return eventType - the BpmModel.EventType of the event
+	 * @return eventBehavior - the BpmModel.BoundaryEventBehavior of the event
+	 * @return successor - the ID of the successor element, if there is one
+	 */
+	function getBoundaryEventGraphDetails(bytes32 _id) external view returns (BpmModel.EventType eventType, BpmModel.BoundaryEventBehavior eventBehavior, bytes32 successor);
 
 	/**
 	 * @dev indicates whether this ProcessDefinition implements the specified interface

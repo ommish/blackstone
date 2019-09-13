@@ -70,14 +70,16 @@ library BpmRuntime {
     // Transitions create "activation tokens" and it's the responsibility of the place to signal it's readiness by setting a "completion token".
     // This supports the use of the places as state holders for BPM activities which generally require some form of processing before producing
     // a new token to activate an outgoing transition.
-    // TODO rename to ActivityNode
+    // Additionally, the node contains the capacity for arbitrary activation tokens to be placed as "markers", or "colored"
+    // tokens which allows the creation of dedicated transitions that respond only to a specific marker ID.
     struct ActivityNode {
+        Node node;
         bool ready;
         bool done;
         bool exists;
-        uint instancesTotal;
-        uint instancesCompleted;
-        Node node;
+        uint instancesTotal; // only used for tasks
+        uint instancesCompleted; // only used for tasks
+        mapping (bytes32 => bool) markers;
     }
 
     // The Transition guides the implementation of different gateway types in the Petri net
@@ -85,6 +87,7 @@ library BpmRuntime {
         Node node;
         bytes32 defaultOutput; // only applies to XOR gateway to set the default transition
         TransitionType transitionType;
+        bytes32 marker;
         bool exists;
     }
 

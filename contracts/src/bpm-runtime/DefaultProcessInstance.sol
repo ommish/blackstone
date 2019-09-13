@@ -112,7 +112,6 @@ contract DefaultProcessInstance is AbstractVersionedArtifact(1,0,0), AbstractDel
 			uint8(BpmRuntime.ProcessInstanceState.CREATED),
 			self.startedBy
 		);
-
     }
 
 	/**
@@ -158,6 +157,15 @@ contract DefaultProcessInstance is AbstractVersionedArtifact(1,0,0), AbstractDel
         notifyProcessStateChange();
     }
 
+    // both the following functions rely on an understanding of how to handle timer escalations
+    function triggerBoundaryEvent(bytes32 _activityInstanceId, bytes32 _eventId) external {
+
+    }
+
+    function triggerIntermediateEvent(bytes32 _eventId) external {
+
+    }
+
 	/**
 	 * @dev Completes the specified activity
 	 * @param _activityInstanceId the activity instance
@@ -176,7 +184,7 @@ contract DefaultProcessInstance is AbstractVersionedArtifact(1,0,0), AbstractDel
         }
 
         // Processing the activity instance is the beginning of a new recursive loop
-        error = self.activities.rows[_activityInstanceId].value.execute(this, self.processDefinition, _service);
+        error = self.activities.rows[_activityInstanceId].value.executeActivity(this, self.processDefinition, _service);
         if (error != BaseErrors.NO_ERROR()) {
             return;
         }
