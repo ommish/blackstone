@@ -1,9 +1,9 @@
-name: main
-on: [push]
+name: test
+on: [push, pull_request]
 jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
-    - run: make docker_test
+    - run: make docker_test 
