@@ -130,7 +130,9 @@ const dependencies = {
         element.label = hexToString(element.label || '');
         break;
       case 'Parameter Value': {
-        if (element.type === PARAMETER_TYPES.MONETARY_AMOUNT) {
+        element.type = element.parameterType;
+        delete element.parameterType;
+        if (element.value && element.type === PARAMETER_TYPES.MONETARY_AMOUNT) {
           element.value /= 100;
         }
         return element;

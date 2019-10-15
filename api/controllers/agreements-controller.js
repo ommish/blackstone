@@ -503,51 +503,45 @@ const createAgreementHandler = asyncMiddleware(async (req, res, next) => {
   return next();
 });
 
-const _generateParamGetterPromises = (agreementAddr, agreementParams) => {
-  const promises = [];
-  const invalidParams = [];
-  agreementParams.forEach((param) => {
-    const getterFunction = dataStorage.agreementDataGetters[`${param.parameterType}`];
-    if (getterFunction) {
-      log.debug(`Getting value of parameter: ${param.name} in agremeement at address ${agreementAddr}`);
-      promises.push(getterFunction(agreementAddr, param.name));
-    } else {
-      log.error(`No getter function found for parameter name ${param.name} with parameter type ${param.parameterType}`);
-    }
+const _getChainParameterValues = async (agreementAddr) => {
+  const paramCount = await dataStorage.getNumberOfData(agreementAddr);
+  const values = {};
+  let parameters = new Array(paramCount).fill(null);
+  parameters = parameters.map(async (__, i) => {
+    const name = await dataStorage.getDataIdAtIndex(agreementAddr, i);
+    const dataType = await dataStorage.getDataType(agreementAddr, name);
+    log.debug(`Getting value of parameter: ${name} in agremeement at address ${agreementAddr}`);
+    const { value } = await dataStorage.agreementDataGetters[dataType](agreementAddr, name);
+    values[name] = value;
   });
-  return { promises, invalidParams };
+  await Promise.all(parameters);
+  return values;
 };
 
-const _getPrivateAgreementParameters = async (fileRef) => {
+const _getPrivateParameterValues = async (fileRef) => {
   const parameters = await hoardGet(fileRef);
-  return JSON.parse(splitMeta(parameters).data.toString());
+  const values = {};
+  JSON.parse(splitMeta(parameters).data.toString()).forEach((param) => { values[param.name] = param.value; });
+  return values;
 };
 
 const getAgreementParameters = async (agreementAddr, parametersFileRef) => {
   try {
-    const agreementParams = await sqlCache.getAgreementValidParameters(agreementAddr);
-    const { promises, invalidParams } = _generateParamGetterPromises(agreementAddr, agreementParams);
-    if (invalidParams.length > 0) {
-      throw boom.badRequest(`Given parameter name(s) do not exist in archetype: ${invalidParams}`);
-    }
-    const paramsFromChain = await Promise.all(promises);
-    const paramsObj = {};
-    paramsFromChain.forEach(({ name, value }, i) => {
-      paramsObj[name] = { name, value, type: agreementParams[i].parameterType };
+    let parameters = await sqlCache.getAgreementValidParameters(agreementAddr);
+    const paramTypes = {};
+    parameters.forEach((param) => { paramTypes[param.name] = param.parameterType; });
+    const chainValues = await _getChainParameterValues(agreementAddr, paramTypes);
+    const privateValues = await _getPrivateParameterValues(parametersFileRef);
+    parameters.forEach((param) => {
+      /* eslint-disable no-param-reassign */
+      if (chainValues[param.name] !== undefined) param.value = chainValues[param.name];
+      else if (privateValues[param.name] !== undefined) param.value = privateValues[param.name];
+      else param.value = null;
+      /* eslint-enable no-param-reassign */
     });
-    const privateParams = await _getPrivateAgreementParameters(parametersFileRef);
-    // paramsFromChain includes all paramsObj from archetype, so "private" ones will also be included with empty values
-    // these empty values must be filled in with the private values retrieved from hoard
-    privateParams.forEach(({ name, value, type }) => {
-      paramsObj[name] = { name, value, type };
-    });
-    const parameters = Object.values(paramsObj).map(param => format('Parameter Value', param));
-    const withNames = await getParticipantNames(parameters, 'value');
-    const withNamesObj = {};
-    withNames.forEach(({ value, displayName }) => {
-      if (displayName) withNamesObj[value] = { displayValue: displayName };
-    });
-    return parameters.map(param => Object.assign(param, withNamesObj[param.value] || {}));
+    parameters = parameters.map(param => format('Parameter Value', param));
+    parameters = await getParticipantNames(parameters, 'value', 'displayValue');
+    return parameters;
   } catch (err) {
     if (err.isBoom) throw err;
     throw boom.badImplementation(`Failed to get agreement parameters: ${err.stack}`);

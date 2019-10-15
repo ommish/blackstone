@@ -71,12 +71,12 @@ participantHelpers.addDepartmentUsers = async (orgAddress, depId, users, userAdd
     });
 };
 
-const getParticipantNames = async (participants, addressKey = 'address') => {
+const getParticipantNames = async (participants, addressKey = 'address', displayNameKey = 'displayName') => {
   try {
     const withNames = await db.getParticipantNames(participants.map(({ [addressKey]: address }) => address));
     const names = {};
     withNames.forEach(({ address, displayName }) => {
-      names[address] = { displayName };
+      names[address] = { [displayNameKey]: displayName };
     });
     return participants.map(account => Object.assign({}, account, names[account[addressKey]] || {}));
   } catch (err) {

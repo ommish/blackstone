@@ -10,6 +10,33 @@ const log = logger.getLogger('controllers.data-storage');
  *       parameterTypes match DataTypes.ParameterType enums
  ********************************************************** */
 
+const getNumberOfData = agreementAddr => new Promise((resolve, reject) => {
+  const agreement = contracts.getContract(global.__abi, CONTRACT_ACTIVE_AGREEMENT, agreementAddr);
+  log.trace(`Getting number of data for agreement ${agreementAddr}`);
+  agreement.getNumberOfData((err, data) => {
+    if (err) return reject(err);
+    return resolve(data.raw[0].valueOf());
+  });
+});
+
+const getDataIdAtIndex = (agreementAddr, index) => new Promise((resolve, reject) => {
+  const agreement = contracts.getContract(global.__abi, CONTRACT_ACTIVE_AGREEMENT, agreementAddr);
+  log.trace(`Getting data id at index ${index} for agreement ${agreementAddr}`);
+  agreement.getDataIdAtIndex(index, (err, data) => {
+    if (err) return reject(err);
+    return resolve(global.hexToString(data.raw[1].valueOf()));
+  });
+});
+
+const getDataType = (agreementAddr, id) => new Promise((resolve, reject) => {
+  const agreement = contracts.getContract(global.__abi, CONTRACT_ACTIVE_AGREEMENT, agreementAddr);
+  log.trace(`Getting data type for id ${id} for agreement ${agreementAddr}`);
+  agreement.getDataType(global.stringToHex(id), (err, data) => {
+    if (err) return reject(err);
+    return resolve(data.raw[0].valueOf());
+  });
+});
+
 const agreementDataSetters = {};
 const agreementDataGetters = {};
 const activityOutDataSetters = {};
@@ -321,19 +348,12 @@ agreementDataSetters[`${PARAM_TYPE.DOCUMENT}`] = setDataValueAsString;
 agreementDataSetters[`${PARAM_TYPE.LARGE_TEXT}`] = setDataValueAsString;
 agreementDataSetters[`${PARAM_TYPE.POSITIVE_NUMBER}`] = setDataValueAsUint;
 
-agreementDataGetters[`${PARAM_TYPE.BOOLEAN}`] = getDataValueAsBool;
-agreementDataGetters[`${PARAM_TYPE.STRING}`] = getDataValueAsString;
-agreementDataGetters[`${PARAM_TYPE.NUMBER}`] = getDataValueAsInt;
-agreementDataGetters[`${PARAM_TYPE.DATE}`] = getDataValueAsUint;
-agreementDataGetters[`${PARAM_TYPE.DATETIME}`] = getDataValueAsUint;
-agreementDataGetters[`${PARAM_TYPE.MONETARY_AMOUNT}`] = getDataValueAsInt;
-agreementDataGetters[`${PARAM_TYPE.USER_ORGANIZATION}`] = getDataValueAsAddress;
-agreementDataGetters[`${PARAM_TYPE.CONTRACT_ADDRESS}`] = getDataValueAsAddress;
-agreementDataGetters[`${PARAM_TYPE.SIGNING_PARTY}`] = getDataValueAsAddress;
-agreementDataGetters[`${PARAM_TYPE.BYTES32}`] = getDataValueAsBytes32;
-agreementDataGetters[`${PARAM_TYPE.DOCUMENT}`] = getDataValueAsString;
-agreementDataGetters[`${PARAM_TYPE.LARGE_TEXT}`] = getDataValueAsString;
-agreementDataGetters[`${PARAM_TYPE.POSITIVE_NUMBER}`] = getDataValueAsUint;
+agreementDataGetters[`${DATA_TYPES.BOOLEAN}`] = getDataValueAsBool;
+agreementDataGetters[`${DATA_TYPES.STRING}`] = getDataValueAsString;
+agreementDataGetters[`${DATA_TYPES.BYTES32}`] = getDataValueAsBytes32;
+agreementDataGetters[`${DATA_TYPES.UINT}`] = getDataValueAsUint;
+agreementDataGetters[`${DATA_TYPES.INT}`] = getDataValueAsInt;
+agreementDataGetters[`${DATA_TYPES.ADDRESS}`] = getDataValueAsAddress;
 
 activityInDataGetters[`${DATA_TYPES.BOOLEAN}`] = getActivityInDataAsBool;
 activityInDataGetters[`${DATA_TYPES.STRING}`] = getActivityInDataAsString;
@@ -351,6 +371,9 @@ activityOutDataSetters[`${DATA_TYPES.ADDRESS}`] = setActivityOutDataAsAddress;
 
 
 module.exports = {
+  getNumberOfData,
+  getDataIdAtIndex,
+  getDataType,
   agreementDataSetters,
   agreementDataGetters,
   activityOutDataSetters,
