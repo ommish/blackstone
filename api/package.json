@@ -32,7 +32,7 @@
     "@hapi/boom": "~7.4.2",
     "@hapi/joi": "~15.1.0",
     "@monax/burrow": "~0.24.3",
-    "@monax/hoard": "^1.6.1",
+    "@monax/hoard": "6.0.0",
     "@sendgrid/mail": "~6.2.1",
     "bcryptjs": "~2.4.3",
     "binstring": "~0.2.1",
